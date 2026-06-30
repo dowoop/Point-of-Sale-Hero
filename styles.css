@@ -1441,3 +1441,38 @@ button { font-family: inherit; }
 .onb-coin.sel { border-color: var(--brand, var(--primary)); background: color-mix(in srgb, var(--brand, var(--primary)) 8%, var(--surface)); }
 .onb-coin svg { width: 22px; height: 22px; color: var(--status-live); flex: 0 0 auto; }
 .onb-actions { display: flex; align-items: center; justify-content: space-between; margin-top: var(--s-lg); }
+
+/* coins flow — asset picker + sub-cart header */
+.asset-list { padding: 0 var(--s-lg) var(--s-xl); display: flex; flex-direction: column; gap: var(--s-md); }
+.asset-card {
+  display: flex; align-items: center; gap: var(--s-md); width: 100%; text-align: left;
+  padding: var(--s-md) var(--s-lg);
+  border: 1.5px solid color-mix(in srgb, var(--brand, var(--primary)) 45%, var(--outline));
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.05s;
+}
+.asset-card:hover { border-color: var(--brand, var(--primary)); transform: translateY(-1px); }
+.asset-card .ac-body { flex: 1 1 auto; }
+.asset-card .ac-name { font-weight: 700; font-size: 1rem; }
+.asset-card .ac-sub { font-size: 0.82rem; color: var(--on-surface-variant); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.asset-card > svg { width: 22px; height: 22px; color: var(--on-surface-variant); flex: 0 0 auto; }
+
+.subcart-coin {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  border: none; background: transparent; cursor: pointer; padding: 0; color: inherit;
+}
+.subcart-coin .sc-coin-body { flex: 1 1 auto; }
+.subcart-coin .sc-coin-name { font-weight: 700; font-size: 0.98rem; }
+.subcart-coin .sc-coin-sub { display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--on-surface-variant); margin-top: 2px; }
+.subcart-coin .chev { color: var(--on-surface-variant); flex: 0 0 auto; }
+.subcart-coin .chev svg { width: 22px; height: 22px; display: block; }
+
+.donation-link {
+  display: block; width: 100%; margin-top: 10px;
+  border: none; background: transparent; color: var(--on-surface-variant);
+  font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.donation-link:hover { color: var(--primary); }

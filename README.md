@@ -7,11 +7,11 @@ real tooling goes in:
 
 > **What is the terminal *supposed* to look like, and how is it supposed to behave?**
 
-It is a faithful, click-through port of the app's UI and core interactions — the five-tab
-shell, the keypad / product-catalog checkout, the "Pay with" chain selector, the full
-payment state machine, the thermal receipt, the coin gallery, the sales ledger, and the
-Terminal Config settings tree — rebuilt cleanly so the layout is consistent and the design
-tokens are a single source of truth.
+It is a faithful, click-through port of the app's UI and core interactions — the four-tab
+shell, a **blockchain → asset → sub-cart** checkout flow (keypad / product catalog), the
+full payment state machine, the thermal receipt, the sales ledger, and the Terminal Config
+settings tree — rebuilt cleanly so the layout is consistent and the design tokens are a
+single source of truth.
 
 **Live demo:** https://dowoop.github.io/Point-of-Sale-Hero/
 
@@ -39,9 +39,8 @@ goes full-bleed and behaves like the app.
 
 | Tab | What you can do |
 |---|---|
-| **Terminal** | Enter an amount on the keypad **or** ring items from the **Product Catalog** into a cart. Pick a coin in the two-group **"Pay with"** selector (Instant on-chain · Private/L2), switch the token (USDC / native), then **Generate Payment QR**. |
+| **Coins** *(home)* | The flow starts here. **Choose a blockchain → choose an asset → a sub-cart** showing the chosen network, asset, live exchange rate, amount due, crypto equivalent and network fee — with the **keypad** (or **Product Catalog** cart) below to build the amount. Then **Generate Payment QR** (or an address-only **donation code**). |
 | **Live Tracker** | Watches a checkout settle. Real, scannable QR. The **Consensus Sandbox** buttons drive the state machine: **Fast / Slow** settle, **Out-Of-Gas / Double-Spend** fail. Ends on a **thermal receipt** (or a failure card). |
-| **Coins** | The accepted-coin gallery. Tap a coin → quick-amount dialog → per-invoice code (or a blank-amount **donation code**). |
 | **Sale History** | The sales ledger with a **reconciliation card** that books *only* Mainnet + REAL + Confirmed sales as income — testnet/demo sales are recorded but never counted. Export CSV, clear ledger. |
 | **Terminal Config** | Mode & Money (terminal mode, baseline currency, sales tax, tips) · Payment Rails (accordion, READY / NEEDS SETUP) · Store (merchant name, cashier screen, catalog) · Security & Books (operator lock, chain status, danger zone) · the **Go-Live — Mainnet** checklist with a typed-`MAINNET` gate. |
 

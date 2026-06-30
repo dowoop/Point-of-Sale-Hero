@@ -91,7 +91,8 @@
 
   /* ---- state --------------------------------------------------------------- */
   const S = {
-    tab: "terminal",
+    tab: "coins",
+    coinStep: "chains",
     mode: "testnet",
     chain: "Ethereum",
     token: "USDC",
@@ -216,46 +217,48 @@
       </div>`;
   }
 
-  function chainSelector() {
-    const groups = [
-      { id: "instant", label: "Instant on-chain", note: "settled by this terminal" },
-      { id: "private", label: "Private / L2 — connect a wallet", note: "settled from your own wallet" },
-    ];
-    const card = (ch) => `
-      <button class="chain-chip ${ch.key === S.chain ? "selected" : ""}" data-act="chain" data-k="${ch.key}" style="--brand:${ch.brand}">
-        ${coinDisc(ch, 22)}
-        <span>
-          <span class="sym" style="${ch.key === S.chain ? "color:" + ch.brand : ""}">${ch.name}</span>
-          <span style="display:flex;align-items:center;gap:5px;font-size:.72rem;color:var(--on-surface-variant)">
-            <span class="status-dot ${ch.coin}"></span>${statusWord(ch)} · ${ch.sym}
-          </span>
-        </span>
-      </button>`;
-    const sel = chainOf(S.chain);
-    const tokenRow = sel.tokens.length > 1
-      ? `<div class="token-row">${sel.tokens.map((t) => `<button class="token-pill ${t === S.token ? "selected" : ""}" data-act="token" data-t="${t}">${t}</button>`).join("")}</div>`
-      : "";
-    return `
-      <div class="pay-with-label">Pay with</div>
-      ${groups.map((g) => {
-        const cs = CHAINS.filter((c) => c.group === g.id);
-        return `
-          <div style="font-size:.72rem;font-weight:700;letter-spacing:.04em;color:var(--on-surface-variant);margin:6px 0 6px">
-            ${g.label.toUpperCase()} <span style="font-weight:500;text-transform:none;opacity:.85">· ${g.note}</span>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px">${cs.map(card).join("")}</div>`;
-      }).join("")}
-      ${tokenRow}`;
-  }
+  const ASSET_NAMES = {
+    BTC: "Bitcoin", ETH: "Ether", SOL: "Solana", POL: "Polygon",
+    XMR: "Monero", XTR: "Tari (Ootle L2)", XTM: "Minotari (Tari L1)",
+    USDC: "USD Coin",
+  };
+  const assetBrand = (ch, tok) => (tok === "USDC" ? "#2775CA" : ch.brand);
+  const assetInk = (ch, tok) => (tok === "USDC" ? "#fff" : ch.ink);
 
-  function dueCard() {
+  // The "sub-cart" — chosen network/asset + all the pertinent checkout info
+  function subCart() {
+    const ch = chainOf(S.chain);
     const due = dueUsd();
     const rate = RATES[S.token];
-    const now = new Date();
-    const t = now.toTimeString().slice(0, 8);
+    const t = new Date().toTimeString().slice(0, 8);
     const cryptoLine = due > 0 ? `<div style="color:var(--status-demo);font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px">= ${fix(cryptoAmt(S.token, due), 6)} ${S.token}</div>` : "";
+    const cartLines = S.cart.map((l) => {
+      const p = prodOf(l.id);
+      return `
+        <div class="cart-line">
+          <span>${esc(p.name)} <span style="color:var(--on-surface-variant)">· ${usd(p.price)}</span></span>
+          <span class="cart-qty">
+            <button class="cart-step" data-act="prod-sub" data-id="${l.id}">−</button>
+            <span style="min-width:16px;text-align:center">${l.qty}</span>
+            <button class="cart-step" data-act="prod-add" data-id="${l.id}">+</button>
+            <span style="min-width:54px;text-align:right;font-weight:700">${usd(p.price * l.qty)}</span>
+          </span>
+        </div>`;
+    }).join("");
+    const draftLine = draftVal() > 0 ? `<div class="cart-line"><span>Custom amount</span><span style="font-weight:700;font-variant-numeric:tabular-nums">${usd(draftVal())}</span></div>` : "";
+    const taxLine = S.taxPct > 0 && subtotalUsd() > 0 ? `<div class="cart-line"><span>Tax ${S.taxPct}%</span><span style="font-variant-numeric:tabular-nums">${usd(taxUsd())}</span></div>` : "";
+    const breakdown = (cartLines || draftLine || taxLine) ? `<div class="due-divider"></div>${cartLines}${draftLine}${taxLine}` : "";
     return `
       <div class="card due-card">
+        <button class="subcart-coin" data-act="coin-back-asset" title="Change network or asset">
+          ${coinDisc(ch, 32)}
+          <span class="sc-coin-body">
+            <div class="sc-coin-name">${ch.name} · ${S.token}</div>
+            <div class="sc-coin-sub"><span class="status-dot ${ch.coin}"></span>${statusWord(ch)} · tap to change</div>
+          </span>
+          <span class="chev">${svg("chevron_right")}</span>
+        </button>
+        <div class="due-divider"></div>
         <div class="due-top">
           <div>
             <div class="due-label">Total Amount Due</div>
@@ -268,9 +271,9 @@
             ${cryptoLine}
           </div>
         </div>
-        ${S.taxPct > 0 && subtotalUsd() > 0 ? `<div style="font-size:.78rem;color:var(--on-surface-variant);margin-top:6px">Subtotal ${usd(subtotalUsd())} · tax ${S.taxPct}% ${usd(taxUsd())}</div>` : ""}
+        ${breakdown}
         <div class="due-divider"></div>
-        ${chainSelector()}
+        <div style="font-size:.82rem;color:var(--on-surface-variant)">Network fee: ${FEE_COPY[S.chain]}</div>
       </div>`;
   }
 
@@ -303,73 +306,76 @@
     return `<div class="catalog">${rows}</div>`;
   }
 
-  function cartPanel() {
-    if (!S.cart.length) return "";
-    const lines = S.cart.map((l) => {
-      const p = prodOf(l.id);
-      return `
-        <div class="cart-line">
-          <span>${esc(p.name)} <span style="color:var(--on-surface-variant)">· ${usd(p.price)}</span></span>
-          <span class="cart-qty">
-            <button class="cart-step" data-act="prod-sub" data-id="${l.id}">−</button>
-            <span style="min-width:16px;text-align:center">${l.qty}</span>
-            <button class="cart-step" data-act="prod-add" data-id="${l.id}">+</button>
-            <span style="min-width:54px;text-align:right;font-weight:700">${usd(p.price * l.qty)}</span>
-          </span>
-        </div>`;
-    }).join("");
-    return `
-      <div class="cart">
-        ${lines}
-        <button class="cart-clear" data-act="cart-clear">Clear cart</button>
-      </div>`;
-  }
-
-  function chargeButton() {
-    const due = dueUsd();
-    const ch = chainOf(S.chain);
-    const live = railLive(ch);
-    const disabled = due <= 0 || S.payment.state !== "idle";
-    return `
-      <div class="charge-wrap">
-        <button class="charge-btn ${live ? "live" : ""}" data-act="generate" ${disabled ? "disabled" : ""}>
-          ${svg("scanner")} GENERATE PAYMENT QR (${S.token}) • ${usd(due)}
-        </button>
-      </div>`;
-  }
-
-  function viewTerminal() {
-    return `
-      ${terminalToday()}
-      ${dueCard()}
-      <div class="segmented">
-        <button class="seg ${S.subtab === "keypad" ? "active" : ""}" data-act="subtab" data-v="keypad">KEYPAD</button>
-        <button class="seg ${S.subtab === "catalog" ? "active" : ""}" data-act="subtab" data-v="catalog">PRODUCT CATALOG</button>
-      </div>
-      ${S.subtab === "keypad" ? keypad() : catalog()}
-      ${cartPanel()}
-      <div class="fee-line">Network fee: ${FEE_COPY[S.chain]}</div>
-      ${chargeButton()}`;
-  }
-
   /* ============================================================================
-     COINS GALLERY
+     COINS FLOW: blockchains → asset → sub-cart + keypad  (the checkout builder)
      ========================================================================== */
-  function viewCoins() {
-    const cards = CHAINS.map((ch) => `
-      <button class="coin-card" data-act="coin" data-k="${ch.key}" style="--brand:${ch.brand}">
+
+  // Step 1 — available blockchains (the home screen)
+  function viewChains() {
+    const card = (ch) => `
+      <button class="coin-card" data-act="pick-chain" data-k="${ch.key}" style="--brand:${ch.brand}">
         <div class="cc-top">
           ${coinDisc(ch, 36)}
           <span><div class="cc-name">${ch.name}</div><div class="cc-sym">${ch.sym}</div></span>
         </div>
         <div class="coin-status ${ch.coin}"><span class="status-dot ${ch.coin}"></span>${statusWord(ch)}</div>
-      </button>`).join("");
+      </button>`;
     return `
+      ${terminalToday()}
       <div class="section-head">
         <h2>Accepted Coins</h2>
-        <p>Tap a coin, enter the amount — every sale gets its own fresh payment code.</p>
+        <p>Choose a network, then an asset — every sale gets its own fresh payment code.</p>
       </div>
-      <div class="coins-grid">${cards}</div>`;
+      <div class="coins-grid">${CHAINS.map(card).join("")}</div>`;
+  }
+
+  // Step 2 — choose the asset to charge in
+  function viewAsset() {
+    const ch = chainOf(S.chain);
+    const cards = ch.tokens.map((tok) => {
+      const brand = assetBrand(ch, tok);
+      return `
+        <button class="asset-card" data-act="pick-asset" data-t="${tok}" style="--brand:${brand}">
+          <span class="coin-glyph" style="--brand:${brand};--ink:${assetInk(ch, tok)};--glyph:42px">${tok}</span>
+          <span class="ac-body">
+            <div class="ac-name">${ASSET_NAMES[tok] || tok}</div>
+            <div class="ac-sub">${tok} · 1 ${tok} ≈ ${usd(RATES[tok])}</div>
+          </span>
+          ${svg("chevron_right")}
+        </button>`;
+    }).join("");
+    return `
+      <div class="subscreen-head"><button class="icon-btn" data-act="coin-back-chains">${svg("arrow_back")}</button><h2>${ch.name}</h2></div>
+      <div class="rails-hint">Choose the asset to charge in on ${ch.name}. Each sale generates its own fresh ${ch.name} payment code.</div>
+      <div class="asset-list">${cards}</div>`;
+  }
+
+  // Step 3 — the checkout builder (sub-cart + keypad)
+  function viewBuild() {
+    const ch = chainOf(S.chain);
+    const due = dueUsd();
+    const live = railLive(ch);
+    const disabled = due <= 0 || S.payment.state !== "idle";
+    return `
+      <div class="subscreen-head"><button class="icon-btn" data-act="coin-back-asset">${svg("arrow_back")}</button><h2 style="text-transform:none;letter-spacing:.02em">New ${ch.name} sale</h2></div>
+      ${subCart()}
+      <div class="segmented">
+        <button class="seg ${S.subtab === "keypad" ? "active" : ""}" data-act="subtab" data-v="keypad">KEYPAD</button>
+        <button class="seg ${S.subtab === "catalog" ? "active" : ""}" data-act="subtab" data-v="catalog">PRODUCT CATALOG</button>
+      </div>
+      ${S.subtab === "keypad" ? keypad() : catalog()}
+      <div class="charge-wrap">
+        <button class="charge-btn ${live ? "live" : ""}" data-act="generate" ${disabled ? "disabled" : ""}>
+          ${svg("scanner")} GENERATE PAYMENT QR (${S.token}) • ${usd(due)}
+        </button>
+        <button class="donation-link" data-act="donation">Show address-only donation code (untracked)</button>
+      </div>`;
+  }
+
+  function viewCoins() {
+    if (S.coinStep === "asset") return viewAsset();
+    if (S.coinStep === "build") return viewBuild();
+    return viewChains();
   }
 
   /* ============================================================================
@@ -828,7 +834,6 @@
      ========================================================================== */
   function navItems() {
     return [
-      { id: "terminal", label: "Terminal", ico: "payment" },
       { id: "coins", label: "Coins", ico: "apps" },
       { id: "tracker", label: "Live Tracker", ico: "scanner" },
       { id: "history", label: "Sale History", ico: "history" },
@@ -994,7 +999,7 @@
       case "tracker": content = viewTracker(); break;
       case "history": content = viewHistory(); break;
       case "settings": content = viewSettings(); break;
-      default: content = viewTerminal();
+      default: content = viewCoins();
     }
     screen.innerHTML = chrome() + content;
     const active = ["awaiting", "donation", "mempool", "confirming"].includes(S.payment.state);
@@ -1117,10 +1122,10 @@
 
   function handle(act, el) {
     switch (act) {
-      case "tab": S.tab = el.dataset.t; if (S.tab !== "settings") S.settingsSection = null; render(); break;
+      case "tab": S.tab = el.dataset.t; if (S.tab !== "settings") S.settingsSection = null; if (S.tab === "coins") S.coinStep = "chains"; render(); break;
       case "drawer-open": S.drawer = true; render(); break;
       case "drawer-close": S.drawer = false; render(); break;
-      case "drawer-nav": S.drawer = false; S.tab = el.dataset.t; S.settingsSection = null; render(); break;
+      case "drawer-nav": S.drawer = false; S.tab = el.dataset.t; S.settingsSection = null; if (S.tab === "coins") S.coinStep = "chains"; render(); break;
       case "drawer-theme": S.drawer = false; toggleTheme(); render(); break;
       case "drawer-onboarding": S.drawer = false; S.onboarding = { step: 0, mode: "testnet", picked: {} }; render(); break;
       case "drawer-golive": S.drawer = false; S.tab = "settings"; S.settingsSection = "golive"; render(); break;
@@ -1142,24 +1147,17 @@
       }
       case "sim": runSim(el.dataset.v); break;
       case "checkout-cancel": S.dialog = { kind: "cancel", from: S.payment.state }; render(); break;
-      case "cancel-confirm": S.dialog = null; endCheckout(); S.tab = "terminal"; render(); break;
-      case "checkout-done": endCheckout(); S.tab = "terminal"; render(); break;
+      case "cancel-confirm": S.dialog = null; endCheckout(); S.tab = "coins"; S.coinStep = "chains"; render(); break;
+      case "checkout-done": endCheckout(); S.tab = "coins"; S.coinStep = "chains"; render(); break;
       case "receipt-print": showToast("Receipt sent to printer (demo)"); break;
       case "copy-addr": copy(S.payment.address, "Wallet address copied!"); break;
       case "copy-hash": copy(el.dataset.h, "Transaction hash copied!"); break;
 
-      case "coin": { const ch = chainOf(el.dataset.k); S.dialog = { kind: "gallery", chain: ch.key, token: ch.tokens[0], amount: "" }; render(); break; }
-      case "gallery-token": S.dialog.token = el.dataset.t; render(); break;
-      case "gallery-preset": S.dialog.amount = String(el.dataset.v); render(); break;
-      case "gallery-go": {
-        const v = fieldVal("gallery-amt");
-        const amt = parseFloat(v);
-        const ch = chainOf(S.dialog.chain);
-        S.chain = ch.key; S.token = S.dialog.token;
-        if (!v || isNaN(amt) || amt <= 0) { S.dialog = null; startCheckout({ chain: ch.key, token: S.dialog ? S.dialog.token : ch.tokens[0], usd: 0, donation: true, memo: "Donation" }); }
-        else { S.dialog = null; startCheckout({ chain: ch.key, token: S.token, usd: +amt.toFixed(2), memo: "Gallery sale" }); }
-        break;
-      }
+      case "pick-chain": { const ch = chainOf(el.dataset.k); S.chain = ch.key; if (!ch.tokens.includes(S.token)) S.token = ch.tokens[0]; S.coinStep = "asset"; render(); break; }
+      case "pick-asset": S.token = el.dataset.t; S.coinStep = "build"; render(); break;
+      case "coin-back-chains": S.coinStep = "chains"; render(); break;
+      case "coin-back-asset": S.coinStep = "asset"; render(); break;
+      case "donation": { const ch = chainOf(S.chain); startCheckout({ chain: ch.key, token: S.token, usd: 0, donation: true, memo: "Donation" }); break; }
 
       case "csv": exportCsv(); break;
       case "ledger-clear": S.ledger = []; showToast("Ledger cleared"); render(); break;
@@ -1208,7 +1206,7 @@
       case "onb-next": S.onboarding.step++; render(); break;
       case "onb-back": S.onboarding.step--; render(); break;
       case "onb-pick": { const k = el.dataset.k; S.onboarding.picked[k] = !S.onboarding.picked[k]; render(); break; }
-      case "onb-finish": { S.mode = S.onboarding.mode === "mainnet" ? "testnet" : "testnet"; S.onboarding = null; S.tab = "terminal"; showToast("Setup complete"); render(); break; }
+      case "onb-finish": { S.mode = "testnet"; S.onboarding = null; S.tab = "coins"; S.coinStep = "chains"; showToast("Setup complete"); render(); break; }
       case "noop": break;
     }
   }
@@ -1233,7 +1231,7 @@
   function resetAll() {
     clearTimers();
     Object.assign(S, {
-      tab: "terminal", mode: "testnet", chain: "Ethereum", token: "USDC", subtab: "keypad",
+      tab: "coins", coinStep: "chains", mode: "testnet", chain: "Ethereum", token: "USDC", subtab: "keypad",
       draft: "", cart: [], payment: { state: "idle" }, ledger: [], txCounter: 0, drawer: false,
       dialog: null, settingsSection: null, railOpen: null, onboarding: null,
       merchant: "CryptoPOS Terminal", baseline: "USD", taxPct: 0, tips: false, staff: [],
