@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Point of Sale Hero — CryptoPoS layout reference</title>
+    <meta
+      name="description"
+      content="An interactive HTML reference build of the CryptoPoS crypto point-of-sale terminal — the intended layout and interactions, cleaned up."
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%236750A4'/%3E%3Ctext x='12' y='17' font-size='13' font-family='sans-serif' font-weight='700' fill='white' text-anchor='middle'%3E%C2%A4%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="stage">
+      <header class="stage-head">
+        <h1 class="stage-title">
+          <span class="hero-mark">◆</span> Point of Sale Hero
+          <span class="sub">CryptoPoS — layout &amp; interaction reference</span>
+        </h1>
+        <div class="stage-controls">
+          <button class="ghost-btn" id="reset-btn" title="Reset the demo session">
+            <svg viewBox="0 0 24 24" aria-hidden="true"></svg> Reset
+          </button>
+          <button class="ghost-btn" id="theme-btn" title="Toggle light / dark theme">
+            <svg viewBox="0 0 24 24" aria-hidden="true"></svg> <span id="theme-label">Dark</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="phone">
+        <div class="device">
+          <div class="phone-notch"></div>
+          <div class="statusbar">
+            <span id="clock">7:45</span>
+            <span class="sb-right">
+              <svg viewBox="0 0 24 24" aria-hidden="true" id="sb-wifi"></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" id="sb-signal"></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" id="sb-battery"></svg>
+            </span>
+          </div>
+
+          <div class="viewport">
+            <div class="screen" id="screen"><!-- rendered by app.js --></div>
+            <div id="overlay-root"><!-- checkout / receipt / drawer / dialogs --></div>
+            <div class="toast" id="toast"></div>
+          </div>
+
+          <nav class="bottomnav" id="bottomnav"><!-- rendered by app.js --></nav>
+        </div>
+      </div>
+
+      <p class="stage-caption">
+        A faithful, tooling-free reference of how the terminal is meant to look and behave.
+        Tap through it. Everything is simulated locally — no network, no real funds.
+      </p>
+    </div>
+
+    <script src="assets/icons.js"></script>
+    <script src="assets/qrcode.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
