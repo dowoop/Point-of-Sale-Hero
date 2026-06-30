@@ -8,7 +8,7 @@ real tooling goes in:
 > **What is the terminal *supposed* to look like, and how is it supposed to behave?**
 
 It is a faithful, click-through port of the app's UI and core interactions — the four-tab
-shell, a **blockchain → asset → sub-cart** checkout flow (keypad / product catalog), the
+shell, a **blockchain → asset → sub-cart** checkout flow (keypad amount entry), the
 full payment state machine, the thermal receipt, the sales ledger, and the Terminal Config
 settings tree — rebuilt cleanly so the layout is consistent and the design tokens are a
 single source of truth.
@@ -39,7 +39,7 @@ goes full-bleed and behaves like the app.
 
 | Tab | What you can do |
 |---|---|
-| **Coins** *(home)* | The flow starts here. **Choose a blockchain → choose an asset → a sub-cart** showing the chosen network, asset, live exchange rate, amount due, crypto equivalent and network fee — with the **keypad** (or **Product Catalog** cart) below to build the amount. Then **Generate Payment QR** (or an address-only **donation code**). |
+| **Coins** *(home)* | The flow starts here. **Choose a blockchain → choose an asset → a sub-cart** showing the chosen network, asset, live exchange rate, amount due, crypto equivalent and network fee — with the **keypad** below to enter the amount. Then **Generate Payment QR** (or an address-only **donation code**). *(Built for individuals; a product catalog/cart is reserved for a later retail build.)* |
 | **Live Tracker** | Watches a checkout settle. Real, scannable QR. The **Consensus Sandbox** buttons drive the state machine: **Fast / Slow** settle, **Out-Of-Gas / Double-Spend** fail. Ends on a **thermal receipt** (or a failure card). |
 | **Sale History** | The sales ledger with a **reconciliation card** that books *only* Mainnet + REAL + Confirmed sales as income — testnet/demo sales are recorded but never counted. Export CSV, clear ledger. |
 | **Terminal Config** | Mode & Money (terminal mode, baseline currency, sales tax, tips) · Payment Rails (accordion, READY / NEEDS SETUP) · Store (merchant name, cashier screen, catalog) · Security & Books (operator lock, chain status, danger zone) · the **Go-Live — Mainnet** checklist with a typed-`MAINNET` gate. |

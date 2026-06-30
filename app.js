@@ -232,22 +232,7 @@
     const rate = RATES[S.token];
     const t = new Date().toTimeString().slice(0, 8);
     const cryptoLine = due > 0 ? `<div style="color:var(--status-demo);font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px">= ${fix(cryptoAmt(S.token, due), 6)} ${S.token}</div>` : "";
-    const cartLines = S.cart.map((l) => {
-      const p = prodOf(l.id);
-      return `
-        <div class="cart-line">
-          <span>${esc(p.name)} <span style="color:var(--on-surface-variant)">· ${usd(p.price)}</span></span>
-          <span class="cart-qty">
-            <button class="cart-step" data-act="prod-sub" data-id="${l.id}">−</button>
-            <span style="min-width:16px;text-align:center">${l.qty}</span>
-            <button class="cart-step" data-act="prod-add" data-id="${l.id}">+</button>
-            <span style="min-width:54px;text-align:right;font-weight:700">${usd(p.price * l.qty)}</span>
-          </span>
-        </div>`;
-    }).join("");
-    const draftLine = draftVal() > 0 ? `<div class="cart-line"><span>Custom amount</span><span style="font-weight:700;font-variant-numeric:tabular-nums">${usd(draftVal())}</span></div>` : "";
-    const taxLine = S.taxPct > 0 && subtotalUsd() > 0 ? `<div class="cart-line"><span>Tax ${S.taxPct}%</span><span style="font-variant-numeric:tabular-nums">${usd(taxUsd())}</span></div>` : "";
-    const breakdown = (cartLines || draftLine || taxLine) ? `<div class="due-divider"></div>${cartLines}${draftLine}${taxLine}` : "";
+    const taxNote = S.taxPct > 0 && due > 0 ? `<div class="due-divider"></div><div style="font-size:.8rem;color:var(--on-surface-variant)">Subtotal ${usd(subtotalUsd())} · tax ${S.taxPct}% ${usd(taxUsd())}</div>` : "";
     return `
       <div class="card due-card">
         <button class="subcart-coin" data-act="coin-back-asset" title="Change network or asset">
@@ -271,7 +256,7 @@
             ${cryptoLine}
           </div>
         </div>
-        ${breakdown}
+        ${taxNote}
         <div class="due-divider"></div>
         <div style="font-size:.82rem;color:var(--on-surface-variant)">Network fee: ${FEE_COPY[S.chain]}</div>
       </div>`;
@@ -359,11 +344,7 @@
     return `
       <div class="subscreen-head"><button class="icon-btn" data-act="coin-back-asset">${svg("arrow_back")}</button><h2 style="text-transform:none;letter-spacing:.02em">New ${ch.name} sale</h2></div>
       ${subCart()}
-      <div class="segmented">
-        <button class="seg ${S.subtab === "keypad" ? "active" : ""}" data-act="subtab" data-v="keypad">KEYPAD</button>
-        <button class="seg ${S.subtab === "catalog" ? "active" : ""}" data-act="subtab" data-v="catalog">PRODUCT CATALOG</button>
-      </div>
-      ${S.subtab === "keypad" ? keypad() : catalog()}
+      ${keypad()}
       <div class="charge-wrap">
         <button class="charge-btn ${live ? "live" : ""}" data-act="generate" ${disabled ? "disabled" : ""}>
           ${svg("scanner")} GENERATE PAYMENT QR (${S.token}) • ${usd(due)}
@@ -642,7 +623,7 @@
     const cards = [
       { id: "mode", t: "Mode & Money", d: "Terminal mode, baseline currency, sales tax, tips", ico: "tune", meta: `${MODES[S.mode].pill} · ${S.baseline} baseline` },
       { id: "rails", t: "Payment Rails", d: "Where payments arrive — addresses and detectors, one rail at a time", ico: "wallet" },
-      { id: "store", t: "Store", d: "Merchant name, cashier screen, product catalog", ico: "storefront" },
+      { id: "store", t: "Store", d: "Merchant name shown on receipts", ico: "storefront" },
       { id: "security", t: "Security & Books", d: "Operator lock, chain diagnostics, and where the books live", ico: "lock" },
     ];
     return `
@@ -735,13 +716,6 @@
   }
 
   function sectionStore() {
-    const rows = PRODUCTS.map((p) => `
-      <div class="product" style="cursor:default">
-        <span class="p-ico">${svg(p.ico)}</span>
-        <span class="p-mid"><div class="p-name">${p.fav ? svg("star", "") + " " : ""}${esc(p.name)}</div><div class="p-cat">${usd(p.price)} • ${esc(p.cat)}</div></span>
-        <button class="cart-step" data-act="prod-fav" data-id="${p.id}" title="Favorite" style="color:${p.fav ? "var(--status-demo)" : "var(--on-surface-variant)"}">★</button>
-        <button class="cart-step" data-act="prod-del" data-id="${p.id}" title="Delete" style="color:var(--error)">✕</button>
-      </div>`).join("");
     return `
       ${settingsBack("STORE")}
       <div class="screen-pad">
@@ -754,18 +728,9 @@
           <p class="helper">Printed on settled receipts. Leave blank to use the default.</p>
         </div>
         <div class="card">
-          <div class="setting-row" style="border:none;padding-top:4px">
-            <div><div class="sr-label">Cashier screen</div><div class="sr-desc">${S.catalogFirst ? "Catalog-first — products lead" : "Keypad-first — the keypad leads"}</div></div>
-            <button class="switch ${S.catalogFirst ? "on" : ""}" data-act="toggle-catalogfirst"></button>
-          </div>
+          <div class="due-label">Cashier Screen</div>
+          <p class="helper" style="margin-top:6px">This terminal is set up for individual payments — the checkout is a single amount on the keypad. A product catalog and cart arrive with the retail build.</p>
         </div>
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div><div class="due-label">Store Product Catalog</div><div class="sr-desc" style="margin-top:4px">Add custom items to speed up checkout</div></div>
-            <button class="dialog-btn primary" data-act="add-product">${svg("add")} Add Item</button>
-          </div>
-        </div>
-        ${rows}
       </div>`;
   }
 
