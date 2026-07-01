@@ -112,7 +112,12 @@ styles.css        # design system + every component (tokens in :root)
 app.js            # state, render loop, all screens, the payment state machine
 assets/icons.js   # Material-style SVG icon set
 assets/qrcode.js  # vendored MIT qrcode-generator (real, scannable codes)
+docs/             # open design knowledge: DIRECTION · DESIGN-SYSTEM · SCREENS · BEHAVIOR
 ```
+
+The `docs/` folder is the durable knowledge base — product direction (individual
+first), design tokens, per-screen specs, and the payment/ledger behavior contract.
+It supersedes the Figma file.
 
 No package manager, no transpiler. Add tooling on top whenever you're ready — the contract
 between markup, tokens, and behavior is deliberately plain.

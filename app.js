@@ -170,7 +170,9 @@
     if (ch === "Ethereum" || ch === "Polygon") {
       const id = ch === "Polygon" ? 137 : 1;
       if (tok === "USDC") { const u = Math.round(amt * 1e6); const c = ch === "Polygon" ? USDC.pol : USDC.eth; return `ethereum:${c}@${id}/transfer?address=${a}&uint256=${u}`; }
-      return `ethereum:${a}@${id}?value=${Math.round(amt * 1e3)}000000000000000`;
+      // wei from µETH, so the QR always matches the 6-decimal on-screen amount
+      // (milli-ETH rounding used to encode zero or a wildly wrong value for small sales)
+      return `ethereum:${a}@${id}?value=${Math.round(amt * 1e6)}000000000000`;
     }
     if (ch === "Monero") return `monero:${a}?tx_amount=${amt.toFixed(6)}`;
     return `tari:${a}?amount=${amt.toFixed(2)}`;
@@ -205,7 +207,7 @@
      TERMINAL
      ========================================================================== */
   function terminalToday() {
-    const real = S.ledger.filter((r) => r.network === "MAINNET" && r.status === "CONFIRMED");
+    const real = S.ledger.filter((r) => r.network === "MAINNET" && r.status === "CONFIRMED" && r.provenance === "REAL");
     const sum = real.reduce((a, r) => a + r.usd, 0);
     return `
       <div class="today-card">
@@ -466,7 +468,7 @@
   function viewReceipt() {
     const p = S.payment;
     const ch = chainOf(p.chainKey);
-    const sim = S.mode === "demo";
+    const sim = p.mode === "demo";
     const loyalty = Math.max(1, Math.round(p.usd));
     return `
       <div class="screen-pad" style="padding-top:16px">
@@ -489,7 +491,7 @@
         </div>
         <div class="receipt-actions">
           <button class="sim-btn" data-act="receipt-print">${svg("print")} Print</button>
-          <button class="sim-btn" data-act="receipt-print">${svg("share")} Share</button>
+          <button class="sim-btn" data-act="receipt-share">${svg("share")} Share</button>
         </div>
         <div class="new-sale-wrap">
           <button class="charge-btn" data-act="checkout-done">PRINT RECEIPT &amp; CONTINUE</button>
@@ -985,6 +987,7 @@
     const usdv = opts.usd;
     S.payment = {
       state: opts.donation ? "donation" : "awaiting",
+      mode: S.mode, // books under the mode it was charged in, even if Config changes mid-flight
       chainKey: ch.key,
       token: token,
       usd: usdv,
@@ -1022,11 +1025,12 @@
   }
   function settle() {
     const p = S.payment;
+    if (!["confirming", "mempool"].includes(p.state)) return;
     S.txCounter++;
     p.txId = S.txCounter;
     p.dateUtc = new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC";
     p.state = "confirmed";
-    const m = MODES[S.mode];
+    const m = MODES[p.mode];
     S.ledger.push({
       id: p.txId,
       ts: new Date().toISOString().slice(0, 19).replace("T", " "),
@@ -1036,7 +1040,7 @@
       crypto: p.crypto,
       rate: RATES[p.token],
       status: "CONFIRMED",
-      provenance: S.mode === "mainnet" ? "REAL" : "SIMULATED",
+      provenance: p.mode === "mainnet" ? "REAL" : "SIMULATED",
       network: m.net,
       txHash: p.txHash,
       memo: p.memo,
@@ -1047,10 +1051,11 @@
   }
   function fail(reason) {
     const p = S.payment;
+    if (!["confirming", "mempool"].includes(p.state)) return;
     S.ledger.push({
       id: ++S.txCounter, ts: new Date().toISOString().slice(0, 19).replace("T", " "),
       chainKey: p.chainKey, token: p.token, usd: p.usd, crypto: p.crypto, rate: RATES[p.token],
-      status: "FAILED", provenance: S.mode === "mainnet" ? "REAL" : "SIMULATED", network: MODES[S.mode].net,
+      status: "FAILED", provenance: p.mode === "mainnet" ? "REAL" : "SIMULATED", network: MODES[p.mode].net,
       txHash: p.txHash, memo: p.memo,
     });
     p.state = "failed";
@@ -1058,7 +1063,8 @@
     render();
   }
   function runSim(kind) {
-    if (S.payment.state !== "awaiting") return;
+    if (S.payment.state !== "awaiting" || S.payment.simStarted) return;
+    S.payment.simStarted = true; // a double-click must not double-book the ledger
     if (kind === "fast") {
       after(300, () => { toMempool(); after(500, () => stepConfirm(280, settle)); });
     } else if (kind === "slow") {
@@ -1115,6 +1121,7 @@
       case "cancel-confirm": S.dialog = null; endCheckout(); S.tab = "coins"; S.coinStep = "chains"; render(); break;
       case "checkout-done": endCheckout(); S.tab = "coins"; S.coinStep = "chains"; render(); break;
       case "receipt-print": showToast("Receipt sent to printer (demo)"); break;
+      case "receipt-share": showToast("Share sheet opened (demo)"); break;
       case "copy-addr": copy(S.payment.address, "Wallet address copied!"); break;
       case "copy-hash": copy(el.dataset.h, "Transaction hash copied!"); break;
 
@@ -1177,8 +1184,11 @@
   }
 
   function copy(text, msg) {
-    try { navigator.clipboard && navigator.clipboard.writeText(text); } catch (e) {}
-    showToast(msg);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => showToast(msg), () => showToast("Copy failed"));
+    } else {
+      showToast("Clipboard unavailable");
+    }
   }
 
   function exportCsv() {
