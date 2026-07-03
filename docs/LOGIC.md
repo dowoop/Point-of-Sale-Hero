@@ -73,8 +73,13 @@ returning "unknown", never "paid". [PA]
     (~5 min fast-forward before first RPC response), and keep an alternate node
     for re-relays (a daemon holding stale key images rejects re-sends other
     nodes accept). [RESEARCH+PA+BENCH]
-  - Tari L1: status-keyed — `{MINED_CONFIRMED, ONE_SIDED_CONFIRMED} ∧ INBOUND ∧
-    !cancelled`; `*_LOCKED` variants stay AWAITING. [PA]
+  - Tari L1: status-keyed — no depth counter on the wire (status + mined-height
+    only, verified at the pinned proto). Base gate `{MINED_CONFIRMED,
+    ONE_SIDED_CONFIRMED} ∧ INBOUND ∧ !cancelled`; the wallet's own
+    `is_confirmed()` ALSO counts `*_CONFIRMED_LOCKED` — whether
+    confirmed-but-time-locked books is a deliberate policy call (spendability
+    gating says defer, matching the Monero `locked` rule); server-side
+    payment_id filtering is unreleased → filter client-side. [RESEARCH+PA]
 - **Transport discipline**: WS/push for latency, HTTP polling for truth — missed WS
   events are unrecoverable without polling backfill. [RESEARCH]
 
@@ -87,7 +92,7 @@ How a payment is bound to *this* sale, per rail:
 | Bitcoin | **Fresh HD address per sale** from merchant xpub (public derivation only; reject any private key material; durably reserve index before display; fall back to static address on failure) | Gap limit: warn the merchant at ~15 consecutive unpaid codes, or track issued addresses in-app [RESEARCH+PA] |
 | Solana | Static address + **fresh 32-byte reference key** as read-only non-signer account | Spec'd Solana Pay pattern; for SPL watch the derived ATA [RESEARCH] |
 | Monero | **Fresh subaddress per sale** via view-only wallet (`generate_from_keys` view-key-only + `create_address` — both verified watch-only-safe in source; production precedent: MoneroPay) | Merchant runs own **unrestricted** wallet-rpc (or on-device wallet2); address-only config = UNTRACKED: show code, book nothing. **Lookahead duty** (Monero's gap limit): wallet2 restores scan only a rolling 50×200 window, and the in-place raise is broken in every shipped release ≤ v0.18.5.0 — create the POS wallet with raised lookahead, count minted subaddresses, and surface seed-restore instructions (restore-time lookahead; Feather ≥2.3.0 wizard) [RESEARCH+PA] |
-| Tari L1 | Static one-sided address + per-sale `payment_id` | [PA] |
+| Tari L1 | Per-sale `payment_id` **embedded in the TariAddress itself** (RFC-0155: dual-key address + ≤256 B encrypted payment id that lands on the UTXO) | Detect via the **read-only console wallet** (view key + public spend key — never the spend wallet) over gRPC; payer-wallet QR support for embedded payment ids unverified [RESEARCH+PA] |
 | EVM push | The WalletConnect session itself binds sale→tx (terminal proposes, customer signs one tx) | [PA] |
 | EVM QR-only | **Weakest**: static address + exact-amount matching within the lock window | Accept as v1 limitation; document collision risk |
 

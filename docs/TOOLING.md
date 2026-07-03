@@ -184,14 +184,60 @@ verified end-to-end on primary sources:
 What remains for the rail: a mainnet self-pay (real funds — the operator's step),
 and the pool-latency measurement against a local node.
 
-### Tari (Minotari L1 / Ootle L2) — [OPEN], with [PRE-ALPHA] code
-Nothing verified; the ecosystem is sparse. Pre-alpha: L1 via Wire gRPC to the
-merchant's wallet (`GetCompletedTransactions`, status-keyed gate — MINED_CONFIRMED /
-ONE_SIDED_CONFIRMED, per-invoice `payment_id`), LocalNet-proven only (mainnet
-blocked on infra). Ootle L2 detectors exist but the repo itself labels the rail
-**NOT-READY (structural)**, and its on-chain templates got an initial security
-NO-GO (quarantined; the app is observe-only). **Ship Tari as testnet/demo-only
-until the ecosystem matures.**
+### Tari (Minotari L1 / Ootle L2) — core [VERIFIED] (pass 2026-07-03: 22 confirmed, 3 refuted) · payer leg [OPEN]
+The make-or-break question resolved in the terminal's favor:
+- **The never-hold-a-spend-key rule is satisfiable.** `minotari_console_wallet`
+  has a documented **read-only boot mode** (private view key + public spend key;
+  cannot spend; seed-export guarded in source), and Tari's official exchange
+  guide demonstrates `GetCompletedTransactions` + payment_id deposit detection
+  against exactly that wallet — the pre-alpha's Wire gRPC integration can be
+  pointed at a view-only wallet unchanged. ("No view-only RPC exists" was
+  refuted 0-3.)
+- **Per-sale attribution is protocol-level**: RFC-0155 (Stable) dual-key
+  TariAddress with an optional embedded payment_id (encrypted, ≤256 B, lands on
+  the UTXO) — the per-sale QR address itself carries the sale id. Spec caveat:
+  view-only one-sided *scanning* is implemented and officially documented but
+  covered by no stable RFC (RFC-0203 stealth addressing is single-key) — code
+  reality is stronger than spec guarantees here.
+- **Tor was never required** — the pre-alpha's mainnet blocker dissolves into
+  config: default transport is `tcp_tor` (TCP preferred), the integration guide
+  documents clearnet TCP + public IP, and official `minotari-cli` scans
+  view-only over HTTPS to hosted `rpc.tari.com` with no node and no Tor (a
+  single point of trust unless self-hosted; clearnet peer density unmeasured).
+- **Gate corrections for the pre-alpha**: (a) the wallet's own `is_confirmed()`
+  includes the `*_CONFIRMED_LOCKED` statuses — the pre-alpha's {6, 9}-only gate
+  delays or misses what the wallet itself calls confirmed; whether
+  confirmed-but-time-locked books is a policy call (Monero-style spendability
+  gating says defer — but decide it, don't inherit it); (b) confirmed: **no
+  depth counter on the wire** at the pinned v5.4.0-pre.2 proto — status +
+  mined-height only; (c) the server-side `UserPaymentId` filter on
+  `GetCompletedTransactions` exists only on the development branch (tagged
+  releases take an empty request) — client-side filtering stays mandatory, and
+  the Wire stubs should be regenerated against a current tag (LOCKED-variant
+  presence at the pinned tag is unverified).
+- **Two official view-key scanners exist in code** — `minotari-cli` (clearnet
+  HTTPS, ViewWallet type that cannot even accept a spend key, 6-block
+  confirmation window, reorg detection) and the `tari-wallet` Rust lib — but
+  both are **unreleased** (0 releases; minotari-cli is license-less and
+  self-titled "Example"). Architecture references, not dependencies; the
+  production target today is the console wallet's read-only mode.
+- **Ootle L2: NOT-READY confirmed** — Igor/Esmeralda testnets only, chain
+  resets happen (and have), testnet-only indexers, no mainnet timeline. Nothing
+  books from Ootle; keep it quarantined.
+- Mainnet context: the live network is Minotari L1 (XTM), launched 2025-05-06
+  (secondary sources); block time/emission specifics did not survive
+  verification.
+- Still [OPEN] — **the payer-parity leg produced zero surviving claims**:
+  the `tari://` URI/QR format, whether Aurora/Universe prefill
+  address+amount+payment_id from a scan, their 2026 maintenance state; plus
+  `minotari_wallet_ffi` Android health and ViewWallet exposure, the view-only
+  wallet's status-ladder equivalence for incoming one-sided payments, and the
+  mainnet default confirmation count.
+
+**Rail verdict**: merchant-side detection is now as strong on paper as Monero's
+was pre-bench. Next steps: verify the payer leg (Aurora/Universe QR behavior),
+then bench — read-only console wallet on esmeralda, then a mainnet self-pay.
+Until the payer leg verifies, Tari ships testnet-only.
 
 ## Price feeds — [OPEN], with [PRE-ALPHA] design worth keeping
 No provider claims (rate limits, licensing for open source) survived verification —
@@ -228,6 +274,16 @@ compileSdk 36.1) is unverified as buildable.
 - Solana `accountSubscribe` as sufficient POS detection (0-3).
 - Precise enumerations of provider subscription-type sets (0-3, 1-2) — vendor docs
   are internally inconsistent; verify per provider at build time.
+
+## Hoped rails (aspirational, unresearched)
+
+All assets the scaffolding can honestly serve are hoped for eventually; the
+privacy rails are queued first per [DIRECTION.md](DIRECTION.md): **Tari** (next —
+pre-alpha code exists, see above), **Dash** (note: its POS-relevant feature is
+InstantSend's fast finality; PrivateSend privacy is optional CoinJoin, not
+default), **Zcash** (shielded pools; incoming viewing keys should permit
+Monero-style view-only detection via lightwalletd — unverified). Each needs the
+full research→bench treatment before code.
 
 ## Open questions (next research)
 1. Monero edges (core + production precedents verified above): URI prefill in

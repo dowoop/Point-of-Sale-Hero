@@ -15,6 +15,17 @@ possible future *layer* on the same scaffolding. What "retail" concretely means 
 are preserved in [SCREENS.md](SCREENS.md) as reference material only — they are not a
 plan, and there is deliberately no retail branch.
 
+## Rails direction (2026-07-03)
+
+**All technologies and assets the scaffolding can honestly serve are hoped to be
+supported eventually** — "hoped" is deliberate: nothing ships without clearing the
+bar the Monero rail set (adversarially verified research, then bench work).
+**Privacy-focused rails get priority: Tari, Dash, and Zcash**, alongside the
+already-verified Monero — privacy at the counter is the differentiating promise of
+a self-custodial terminal. Priority orders the research/bench queue; it does not
+exempt a rail from the honesty rules (untracked modes book nothing, mode captured
+at charge time, fail-closed detection).
+
 ## What is scaffolding (must stay persona-independent)
 
 Everything hard lives below the tab shell and must never fork per persona:
@@ -85,6 +96,14 @@ Everything hard lives below the tab shell and must never fork per persona:
   supervise wallet-rpc, `store` after mint, alternate-node re-relay, provision
   the wallet at setup. Remaining: mainnet self-pay (operator's step), pool
   latency vs a local node. Details in [TOOLING.md](TOOLING.md).
+- **2026-07-03** — Rails direction set: all assets hoped for eventually;
+  **privacy rails prioritized (Tari, Dash, Zcash)**. Tari research pass
+  (22 confirmed, 3 refuted): **view-only detection exists** (console wallet
+  read-only mode; official exchange-guide precedent), payment_id is embeddable
+  in the TariAddress (RFC-0155), Tor was config-default not requirement, the
+  pre-alpha's confirmation gate needs a LOCKED-status policy decision, and
+  Ootle stays NOT-READY. Payer leg (tari:// URI, Aurora/Universe prefill)
+  unverified — Tari ships testnet-only until it is. [TOOLING.md](TOOLING.md).
   Full inventory of the `crypto-pos-terminal` pre-alpha (real chain logic, 1,011
   host tests, but doc-only provenance — knowledge treated with caution). The
   persona-independent scaffolding distilled into [LOGIC.md](LOGIC.md), evidence-
