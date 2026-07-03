@@ -144,10 +144,45 @@ verified end-to-end on primary sources:
   node topology practice (own vs public daemon, `--untrusted-daemon` semantics for
   view-only wallets); fresh-wallet scan latency/battery on-device.
 
-The pre-alpha's flow (digest auth, conjunctive gate, UNTRACKED amber fallback) now
-has its RPC substrate verified and two production processors as precedent; what
-remains before trusting the rail is bench work — stagenet end-to-end, then a
-mainnet self-pay.
+- **Stagenet bench (2026-07-03, executed live on v0.18.5.0 against public
+  remote nodes)** — the desk claims survived contact:
+  - Full loop **settled end-to-end**: faucet → payer wallet → fresh per-sale
+    subaddress on the view-only terminal wallet → confirmation ladder →
+    **`locked` flipped false exactly at confirmation 10** (settle gate observed
+    live, 26 min after relay); amount atomically exact; attributed by subaddress
+    index; `double_spend_seen` false throughout.
+  - **Research correction, caught by the bench**: `set_subaddress_lookahead`
+    EXISTS and succeeds on shipped v0.18.5.0 — the 0.18-branch backport
+    (PR #9954, July 2025) made the May 2026 tag; the "not in any shipped
+    release" claim read GitHub's diverged-compare wrong. The in-place lookahead
+    raise is deployed after all (expansion behavior still worth a one-off test).
+  - **Provisioning cost measured**: a fresh `generate_from_keys` view-only
+    wallet fast-forwards block hashes before its first response — ~5 min at
+    restore-height=tip over WAN, unbounded from height 1. Provision at setup
+    with progress UX; never at first sale. Restore height must be the chain
+    tip, not the wallet's local height.
+  - **Operational reality, the dominant finding**: `monero-wallet-rpc` against
+    public remote nodes **wedges routinely** (RPC hangs while the refresh
+    thread holds the wallet lock; fails closed — never fabricated data). A
+    terminal must supervise/restart it, or run it beside the merchant's own
+    node. This also cost the bench its pool-latency number: pool-DETECTED
+    mechanics are source-verified but the seconds figure should be measured
+    against a merchant-local node.
+  - **Failure modes exercised for free**: one payment died in relay (never
+    reached any pool → wallet reclassified it `failed`; the FAILED path in the
+    wild); the re-send was then rejected (-4) by the payer's own daemon holding
+    stale key-image state while other nodes accepted the identical raw tx —
+    **re-sends may need relay via an alternate node** (`/sendrawtransaction`
+    returns the structured verdict).
+  - **Two live OutcomeUnknown demonstrations**: a timed-out `create_address`
+    and a timed-out `transfer` both executed server-side after the client gave
+    up — client timeout ≠ server no-op, exactly LOGIC.md §5's rule.
+  - **Crash-persistence rule earned**: after a `kill -9`, the wallet forgot a
+    minted-but-unpaid subaddress and re-issued its index — one index from
+    address reuse across sales. **Call `store` after every mint.**
+
+What remains for the rail: a mainnet self-pay (real funds — the operator's step),
+and the pool-latency measurement against a local node.
 
 ### Tari (Minotari L1 / Ootle L2) — [OPEN], with [PRE-ALPHA] code
 Nothing verified; the ecosystem is sparse. Pre-alpha: L1 via Wire gRPC to the

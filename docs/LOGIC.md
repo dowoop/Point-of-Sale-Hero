@@ -65,7 +65,14 @@ returning "unknown", never "paid". [PA]
     cannot see the pool); requires an **unrestricted** wallet-rpc. Production
     corroboration: MoneroPay's callback ladder fires at exactly 0/1/10 confs —
     the same DETECTED → CONFIRMING → SETTLED mapping — with 0-conf opt-in and
-    off by default. [RESEARCH+PA]
+    off by default. Bench-verified live (stagenet 2026-07-03): `locked` flips
+    false exactly at conf 10. Operational duties from the bench: **supervise
+    wallet-rpc** (it wedges against public remote nodes; fail-closed but
+    unresponsive), **`store` after every subaddress mint** (a crash re-issues
+    unmined indices → address reuse), provision the view-only wallet at setup
+    (~5 min fast-forward before first RPC response), and keep an alternate node
+    for re-relays (a daemon holding stale key images rejects re-sends other
+    nodes accept). [RESEARCH+PA+BENCH]
   - Tari L1: status-keyed — `{MINED_CONFIRMED, ONE_SIDED_CONFIRMED} ∧ INBOUND ∧
     !cancelled`; `*_LOCKED` variants stay AWAITING. [PA]
 - **Transport discipline**: WS/push for latency, HTTP polling for truth — missed WS

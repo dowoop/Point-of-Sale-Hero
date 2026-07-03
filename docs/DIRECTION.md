@@ -78,6 +78,13 @@ Everything hard lives below the tab shell and must never fork per persona:
   **subaddress-lookahead restore hazard** from source (50×200 rolling window;
   in-place raise broken in every shipped release; restore-time lookahead is the
   recovery — Feather wizard). Tari/price-feeds/Kotlin-libs remain open.
+- **2026-07-03** — **Stagenet bench executed** (v0.18.5.0, public remote nodes):
+  the full view-only flow settled end-to-end — per-sale subaddress, confirmation
+  ladder, `locked`→false at exactly 10 confs. Corrected the research on
+  `set_subaddress_lookahead` (it IS in shipped v0.18.5.0). Earned rules:
+  supervise wallet-rpc, `store` after mint, alternate-node re-relay, provision
+  the wallet at setup. Remaining: mainnet self-pay (operator's step), pool
+  latency vs a local node. Details in [TOOLING.md](TOOLING.md).
   Full inventory of the `crypto-pos-terminal` pre-alpha (real chain logic, 1,011
   host tests, but doc-only provenance — knowledge treated with caution). The
   persona-independent scaffolding distilled into [LOGIC.md](LOGIC.md), evidence-
