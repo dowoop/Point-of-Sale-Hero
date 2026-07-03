@@ -19,8 +19,10 @@ plan, and there is deliberately no retail branch.
 
 Everything hard lives below the tab shell and must never fork per persona:
 
-- **Payment state machine** — Idle → Awaiting → Mempool → Confirming (n/N) → Settled /
-  Failed, with tracked timers so cancel/reset always kills pending transitions.
+- **Payment state machine** — Idle → Awaiting (15-min rate lock) → Mempool →
+  Confirming (n/N) → Settled / Expired / Failed, plus the Needs-Review quarantine
+  (late payments, stopped watches, overpay surplus) and refunds as NEW outbound
+  payments — with tracked timers so cancel/reset always kills pending transitions.
   See [BEHAVIOR.md](BEHAVIOR.md).
 - **Rails + real QR encoding** — BIP-21 / Solana Pay / EIP-681 / Monero / Tari URIs
   from clearly-marked SAMPLE addresses; QR amounts must always match the on-screen
@@ -53,6 +55,19 @@ Everything hard lives below the tab shell and must never fork per persona:
   QR, sim one-shot guard, settle/fail state guards, mode captured at charge time,
   Today-card income filter, honest clipboard toast, Share ≠ Print). The exploration's
   specs live on in [SCREENS.md](SCREENS.md) as reference.
+- **2026-07-02** — Deep research into crypto-payment misconceptions and POS practice
+  (SOUPS 2020 / FC 2016 / CHI 2016; Square's payment lifecycle; BTCPay; BIP 321 /
+  ERC-681 — 25 claims adversarially verified, 0 refuted) → [RESEARCH.md](RESEARCH.md).
+  A three-lens design bake-off (honesty-maximalist / counter-speed / wallet-convention,
+  judged, winner synthesized with 28 grafts) produced [LAYOUT.md](LAYOUT.md) — the
+  target layout and **verbatim copy deck**.
+- **2026-07-02** — **The "new hero": build rewritten to match LAYOUT.md.** Keypad-first
+  charge home, mode strip on every payment surface, rate-lock countdown, block-strip
+  confirmations, NEEDS REVIEW / REFUND ledger states, PRACTICE watermark on
+  non-mainnet receipts; fixed the testnet QR bug (chain ids were hardcoded mainnet
+  @1/@137 — now Sepolia @11155111 / Amoy @80002 per the mode captured at charge time).
+  Docs rewritten to describe the new build; **copy changes go through LAYOUT.md's
+  Copy deck first**.
 
 ## Notes from the retail exploration (reference only — not a plan)
 

@@ -13,7 +13,11 @@ what retail means.** A retail exploration was implemented and deliberately disca
 on 2026-07-01; its specs survive in `docs/SCREENS.md` as reference only.
 
 All design knowledge lives in `docs/` (open markdown, supersedes the Figma file):
-`DIRECTION.md` · `DESIGN-SYSTEM.md` · `SCREENS.md` · `BEHAVIOR.md`.
+`DIRECTION.md` (why + decision log) · `RESEARCH.md` (verified evidence) ·
+`LAYOUT.md` (**the layout & copy contract** — its Copy deck strings are verbatim;
+change copy there first, then in the build) · `SCREENS.md` (the build as it stands) ·
+`BEHAVIOR.md` (state machine + invariants) · `DESIGN-SYSTEM.md` (tokens) ·
+`PAGES.md` (one-glance map & defaults).
 
 ## Stack & architecture
 

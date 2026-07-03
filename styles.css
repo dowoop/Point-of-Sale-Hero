@@ -135,6 +135,15 @@ button { font-family: inherit; }
   --mode-demo-fg: #4a3d6b;
   --mode-demo-dot: #8e8e9e;
 
+  /* Solid/strong mode fills — the mainnet strip band and the non-mainnet
+     commit-button fills (only mainnet ever wears the live green treatment) */
+  --mode-testnet-solid-bg: #1d5bbf;
+  --mode-testnet-solid-fg: #ffffff;
+  --mode-demo-solid-bg: #5d5470;
+  --mode-demo-solid-fg: #ffffff;
+  --mode-mainnet-solid-bg: #b3261e;
+  --mode-mainnet-solid-fg: #ffffff;
+
   --key-bg: #f4eff8;
   --key-bg-active: #e7def5;
   --key-fg: #2c2533;
@@ -146,6 +155,19 @@ button { font-family: inherit; }
   --receipt-fg: #1d1b20;
   --receipt-muted: #6f6a78;
   --receipt-dash: #d8d2e0;
+  /* receipt booking marks — paper stays light, so these hold in both themes */
+  --receipt-income-bg: #1b7a3d;
+  --receipt-income-fg: #ffffff;
+  --receipt-hold-fg: #8a5a00;
+  --receipt-watermark: rgba(178, 106, 0, 0.18);
+
+  /* QR-card markings (screen B) — the card is white in BOTH themes (quiet
+     zone must stay white for scanability), so these pairs are theme-invariant;
+     defined per theme block by convention. */
+  --qr-card-bg: #ffffff;
+  --qr-testnet-bg: #1d5bbf;  --qr-testnet-fg: #ffffff;
+  --qr-demo-bg: #5d5470;     --qr-demo-fg: #ffffff;
+  --qr-mainnet-bg: #fbe7e4;  --qr-mainnet-fg: #8c1d18;
 }
 
 /* ---- DARK: "Terminal Slate" ----------------------------------------------- */
@@ -199,6 +221,14 @@ button { font-family: inherit; }
   --mode-demo-fg: #c2cbd3;
   --mode-demo-dot: #8a96a2;
 
+  /* Solid/strong mode fills (dark) */
+  --mode-testnet-solid-bg: #2979ff;
+  --mode-testnet-solid-fg: #06203f;
+  --mode-demo-solid-bg: #77828e;
+  --mode-demo-solid-fg: #0c1116;
+  --mode-mainnet-solid-bg: #e5484d;
+  --mode-mainnet-solid-fg: #2a0a0a;
+
   --key-bg: #1c222b;
   --key-bg-active: #243042;
   --key-fg: #e6edf3;
@@ -210,6 +240,18 @@ button { font-family: inherit; }
   --receipt-fg: #1d1b20;
   --receipt-muted: #6f6a78;
   --receipt-dash: #cfc9d6;
+  /* receipt booking marks — same paper values as light (thermal stays light) */
+  --receipt-income-bg: #1b7a3d;
+  --receipt-income-fg: #ffffff;
+  --receipt-hold-fg: #8a5a00;
+  --receipt-watermark: rgba(178, 106, 0, 0.18);
+
+  /* QR-card markings — the card stays white in dark mode too, so the same
+     theme-invariant pairs apply (defined here so both themes carry them). */
+  --qr-card-bg: #ffffff;
+  --qr-testnet-bg: #1d5bbf;  --qr-testnet-fg: #ffffff;
+  --qr-demo-bg: #5d5470;     --qr-demo-fg: #ffffff;
+  --qr-mainnet-bg: #fbe7e4;  --qr-mainnet-fg: #8c1d18;
 }
 
 /* ============================================================================
@@ -446,6 +488,40 @@ button { font-family: inherit; }
 }
 .mainnet-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mode-mainnet-dot); }
 
+/* Mode strip — persistent chrome under the app bar on every payment surface
+   (LAYOUT.md screen G). Testnet wears the blue --mode-* band, demo the neutral
+   band, mainnet the solid/strong red band. */
+.mode-strip {
+  padding: 7px var(--s-lg) 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+}
+.mode-strip.testnet { background: var(--mode-testnet-bg); color: var(--mode-testnet-fg); }
+.mode-strip.demo { background: var(--mode-demo-bg); color: var(--mode-demo-fg); }
+.mode-strip.mainnet { background: var(--mode-mainnet-solid-bg); color: var(--mode-mainnet-solid-fg); }
+
+/* Mode preview marking (LAYOUT G[1]) — while the app-bar pill previews a mode,
+   the pill and the strip wear the previewed family but are unmistakably marked:
+   a dashed outline on the pill, a dashed PREVIEW chip on the strip's right
+   edge. currentColor keeps both markers in each mode family's own ink — the
+   --mode-* fg tokens are defined for both themes. The chip is a separate
+   element; the strip copy itself stays verbatim. */
+.mode-pill.previewing { outline: 2px dashed currentColor; outline-offset: -2px; }
+.mode-strip.previewing { position: relative; padding-right: 88px; }
+.mode-strip .preview-chip {
+  position: absolute;
+  right: var(--s-md);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 2px 8px;
+  border: 1.5px dashed currentColor;
+  border-radius: var(--r-pill);
+  font-size: 0.62rem;
+  letter-spacing: 0.09em;
+}
+
 .screen-pad { padding: 0 var(--s-lg) var(--s-xl); }
 
 /* section header used across screens */
@@ -488,85 +564,88 @@ button { font-family: inherit; }
 }
 .card + .card { margin-top: var(--s-md); }
 
-/* TODAY summary */
-.today-card {
+/* ============================================================================
+   SCREEN A — CHARGE (keypad home): rail chip, amount zone, rate/fee lines
+   ========================================================================== */
+/* [2] Sticky rail chip — pinned to the top of the scrolling keypad home */
+.rail-chip {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  background: var(--surface-variant);
-  border-radius: var(--r-lg);
-  padding: var(--s-md) var(--s-lg);
-  margin: 0 var(--s-lg) var(--s-md);
+  gap: var(--s-md);
+  width: 100%;
+  text-align: left;
+  padding: 10px var(--s-lg);
+  border: none;
+  border-bottom: 1px solid var(--outline-soft);
+  background: var(--bg);
+  color: var(--on-bg);
+  cursor: pointer;
 }
-.today-card .label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--on-surface-variant); }
-.today-card .sub { font-size: 0.9rem; color: var(--on-surface); margin-top: 2px; }
-.today-card .amt { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rail-chip:hover { background: color-mix(in srgb, var(--on-bg) 4%, var(--bg)); }
+.rail-chip .rc-body { flex: 1 1 auto; display: flex; flex-direction: column; }
+.rail-chip .rc-name { font-weight: 700; font-size: 0.96rem; }
+.rail-chip .rc-sub { font-size: 0.76rem; color: var(--on-surface-variant); margin-top: 1px; }
+.rail-chip .chev { color: var(--on-surface-variant); flex: 0 0 auto; }
+.rail-chip .chev svg { width: 22px; height: 22px; display: block; }
 
-/* AMOUNT DUE */
-.due-card { margin: 0 var(--s-lg) var(--s-md); }
-.due-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-md); }
-.due-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--on-surface-variant); }
-.due-amount {
-  font-size: 3rem;
+/* [3] Amount display — fiat primary, live crypto equivalent beneath */
+.amount-zone { text-align: center; padding: var(--s-sm) var(--s-lg) 0; }
+.amt-fiat {
+  font-size: 2.6rem;
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
+}
+.amt-fiat.zero { color: color-mix(in srgb, var(--on-surface) 38%, transparent); }
+.amt-crypto {
+  color: var(--on-surface-variant);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   margin-top: 2px;
 }
-.due-amount.zero { color: color-mix(in srgb, var(--on-surface) 38%, transparent); }
-.rate-box { text-align: right; font-size: 0.82rem; color: var(--on-surface-variant); line-height: 1.4; }
-.rate-box .rate-title { font-weight: 600; color: var(--on-surface); }
-.rate-box .rate-eq { font-variant-numeric: tabular-nums; }
-.rate-box .rate-time { font-size: 0.72rem; opacity: 0.8; }
 
-.due-divider { height: 1px; background: var(--outline-soft); margin: var(--s-md) 0; }
-.pay-with-label { font-size: 0.92rem; color: var(--on-surface-variant); margin-bottom: var(--s-sm); }
-
-/* ---- chain selector (Pay with) -------------------------------------------- */
-.chain-row {
-  display: flex;
-  gap: var(--s-sm);
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: none;
-}
-.chain-row::-webkit-scrollbar { display: none; }
-.chain-chip {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 12px 7px 8px;
-  border-radius: var(--r-pill);
-  border: 1.5px solid var(--outline);
-  background: var(--surface);
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-.chain-chip:hover { border-color: color-mix(in srgb, var(--brand, var(--primary)) 60%, var(--outline)); }
-.chain-chip.selected {
-  border-color: var(--brand, var(--primary));
-  background: color-mix(in srgb, var(--brand, var(--primary)) 12%, var(--surface));
-}
-.chain-chip .sym { font-size: 0.84rem; font-weight: 700; }
-.chain-chip .status-dot { width: 7px; height: 7px; border-radius: 50%; }
-.chain-chip .status-dot.live { background: var(--status-live-dot); }
-.chain-chip .status-dot.demo { background: var(--status-demo-dot); }
-
-/* token pills (USDC / native) */
-.token-row { display: flex; gap: var(--s-sm); margin-top: var(--s-md); flex-wrap: wrap; }
-.token-pill {
-  padding: 5px 12px;
-  border-radius: var(--r-pill);
-  border: 1.5px solid var(--outline);
-  background: var(--surface);
+/* [4] Rate line + [5] fee disclosure — always on-surface, never collapsed */
+.rate-line {
+  text-align: center;
   font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
   color: var(--on-surface-variant);
+  line-height: 1.45;
+  padding: 8px var(--s-lg) 0;
+  font-variant-numeric: tabular-nums;
 }
-.token-pill.selected { border-color: var(--primary); background: var(--primary-container); color: var(--on-primary-container); }
+.fee-note {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--on-surface-variant);
+  line-height: 1.45;
+  padding: 4px var(--s-lg) 0;
+}
+.home-divider { height: 1px; background: var(--outline-soft); margin: 10px var(--s-lg); }
+
+/* [8] Two-line commit button — verb line + smaller lock clause */
+.charge-btn.two-line {
+  flex-direction: column;
+  gap: 2px;
+  height: auto;
+  min-height: 58px;
+  padding: 9px 16px;
+}
+.charge-btn .cb-verb { text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.2; }
+.charge-btn .cb-lock {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  line-height: 1.25;
+}
+
+/* Config section label (kept — Terminal Config cards use it) */
+.due-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--on-surface-variant); }
 
 /* ---- coin glyph (brand disc + ticker) ------------------------------------- */
 .coin-glyph {
@@ -620,16 +699,16 @@ button { font-family: inherit; }
 .keypad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--s-md);
+  gap: 10px;
   padding: 0 var(--s-lg);
 }
 .key {
-  height: 78px;
+  height: 54px;
   border-radius: var(--r-md);
   border: 1px solid var(--outline-soft);
   background: var(--key-bg);
   color: var(--key-fg);
-  font-size: 1.6rem;
+  font-size: 1.45rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
@@ -638,6 +717,10 @@ button { font-family: inherit; }
 .key:hover { background: var(--key-bg-active); }
 .key:active { transform: scale(0.97); }
 .key.clear { background: var(--key-clear-bg); color: var(--key-clear-fg); font-weight: 700; }
+/* entry blocked while a payment is in flight */
+.key:disabled, .correction:disabled { opacity: 0.45; cursor: not-allowed; }
+.key:disabled:hover { background: var(--key-bg); }
+.key:disabled:active { transform: none; }
 
 .correction {
   display: flex;
@@ -645,8 +728,8 @@ button { font-family: inherit; }
   justify-content: center;
   gap: 10px;
   width: calc(100% - 2 * var(--s-lg));
-  margin: var(--s-md) var(--s-lg) 0;
-  height: 58px;
+  margin: var(--s-sm) var(--s-lg) 0;
+  height: 46px;
   border-radius: var(--r-md);
   border: 1px solid var(--outline-soft);
   background: var(--surface-variant);
@@ -729,7 +812,7 @@ button { font-family: inherit; }
   color: var(--on-surface-variant);
   padding: var(--s-lg) var(--s-lg) var(--s-md);
 }
-.charge-wrap { padding: 0 var(--s-lg) var(--s-lg); }
+.charge-wrap { padding: var(--s-md) var(--s-lg) var(--s-sm); }
 .charge-btn {
   width: 100%;
   height: 60px;
@@ -751,6 +834,10 @@ button { font-family: inherit; }
 .charge-btn:active { transform: translateY(1px); }
 .charge-btn svg { width: 22px; height: 22px; }
 .charge-btn.live { background: var(--status-live); color: #fff; }
+/* Mode-family commit fills — only mainnet ever wears the live-charge (green)
+   treatment; a testnet/demo charge can never look bookable. */
+.charge-btn.mode-testnet { background: var(--mode-testnet-solid-bg); color: var(--mode-testnet-solid-fg); }
+.charge-btn.mode-demo { background: var(--mode-demo-solid-bg); color: var(--mode-demo-solid-fg); }
 .charge-btn:disabled {
   background: var(--surface-variant);
   color: color-mix(in srgb, var(--on-surface) 38%, transparent);
@@ -764,7 +851,7 @@ button { font-family: inherit; }
 .bottomnav {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   align-items: stretch;
   background: var(--surface-variant);
   border-top: 1px solid var(--outline-soft);
@@ -844,6 +931,19 @@ button { font-family: inherit; }
 .coin-status.live .status-dot { background: var(--status-live-dot); }
 .coin-status.demo { color: var(--status-demo); }
 .coin-status.demo .status-dot { background: var(--status-demo-dot); }
+/* the rail currently on the keypad home */
+.coin-card.selected {
+  border-color: var(--brand, var(--primary));
+  background: color-mix(in srgb, var(--brand, var(--primary)) 10%, var(--surface));
+}
+/* NEEDS-SETUP rails: disabled with their reason — never silently chargeable */
+.coin-card.blocked {
+  border-style: dashed;
+  border-color: var(--outline);
+  cursor: not-allowed;
+}
+.coin-card.blocked:hover { transform: none; border-color: var(--outline); }
+.coin-card .cc-reason { font-size: 0.72rem; color: var(--on-surface-variant); line-height: 1.4; }
 
 /* ============================================================================
    STATUS BADGES (READY / NEEDS SETUP / SETTLED / etc.) — themed both modes
@@ -1051,35 +1151,7 @@ button { font-family: inherit; }
 /* ============================================================================
    SALE HISTORY
    ========================================================================== */
-.history-summary {
-  margin: 0 var(--s-lg) var(--s-md);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--s-md);
-}
-.summary-cell {
-  border: 1px solid var(--outline);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  padding: var(--s-md) var(--s-lg);
-}
-.summary-cell .sc-k { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--on-surface-variant); }
-.summary-cell .sc-v { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
-
 .history-list { padding: 0 var(--s-lg) var(--s-xl); display: flex; flex-direction: column; gap: var(--s-sm); }
-.history-row {
-  display: flex;
-  align-items: center;
-  gap: var(--s-md);
-  padding: var(--s-md);
-  border: 1px solid var(--outline);
-  border-radius: var(--r-md);
-  background: var(--surface);
-}
-.history-row .hr-mid { flex: 1 1 auto; }
-.history-row .hr-amt { font-weight: 700; font-variant-numeric: tabular-nums; }
-.history-row .hr-sub { font-size: 0.78rem; color: var(--on-surface-variant); margin-top: 2px; }
-.history-row .hr-coin { font-size: 0.78rem; color: var(--on-surface-variant); }
 
 .empty-state {
   padding: var(--s-xxl) var(--s-xl);
@@ -1129,7 +1201,7 @@ button { font-family: inherit; }
   max-width: 80%;
   margin: var(--s-lg) auto;
   padding: 16px;
-  background: #fff;
+  background: var(--qr-card-bg);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-1);
   border: 1px solid var(--outline);
@@ -1189,31 +1261,12 @@ button { font-family: inherit; }
   border: 1px solid var(--receipt-dash);
   text-align: center;
 }
-.receipt .r-check {
-  width: 66px; height: 66px; margin: 0 auto var(--s-md);
-  border-radius: 50%;
-  background: var(--status-live-dot);
-  color: #fff;
-  display: grid; place-items: center;
-}
-.receipt .r-check svg { width: 38px; height: 38px; }
-.receipt .r-title { font-weight: 800; font-size: 1.1rem; letter-spacing: 0.02em; }
-.receipt .r-amount { font-size: 2.2rem; font-weight: 800; font-variant-numeric: tabular-nums; margin: 4px 0; }
-.receipt .r-sub { color: var(--receipt-muted); font-size: 0.86rem; }
 .receipt .r-divider { border-top: 1px dashed var(--receipt-dash); margin: var(--s-lg) 0; }
 .receipt .r-line { display: flex; justify-content: space-between; gap: var(--s-md); padding: 5px 0; font-size: 0.86rem; }
 .receipt .r-line .rk { color: var(--receipt-muted); }
 .receipt .r-line .rv { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
 .receipt .r-line .rv.mono { font-family: var(--font-mono); font-size: 0.76rem; word-break: break-all; }
-.receipt .r-loyalty {
-  margin-top: var(--s-md); padding: var(--s-md);
-  border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--c-xtr) 12%, var(--receipt-bg));
-  color: #7a1063;
-  font-weight: 700; font-size: 0.84rem;
-}
 .receipt-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-sm); margin-top: var(--s-lg); }
-.new-sale-wrap { padding: var(--s-md) var(--s-lg) var(--s-lg); }
 
 /* ============================================================================
    DRAWER
@@ -1262,6 +1315,39 @@ button { font-family: inherit; }
   color: var(--on-surface-variant);
 }
 .drawer-note b { color: var(--on-surface); }
+
+/* ============================================================================
+   BOTTOM SHEET — chain gallery behind the rail chip (screen A)
+   ========================================================================== */
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: calc(var(--z-overlay) + 1);
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  max-height: 78%;
+  overflow-y: auto;
+  padding: var(--s-sm) var(--s-lg) var(--s-xl);
+  box-shadow: var(--shadow-2);
+  animation: sheetUp 0.22s ease;
+}
+@keyframes sheetUp { from { transform: translateY(28%); opacity: 0.4; } to { transform: translateY(0); opacity: 1; } }
+.sheet-grab {
+  width: 40px;
+  height: 4px;
+  border-radius: var(--r-round);
+  background: var(--outline);
+  margin: 6px auto 10px;
+}
+.sheet-head { display: flex; align-items: center; gap: var(--s-sm); padding: 0 0 var(--s-md); }
+.sheet-head-mid { flex: 1 1 auto; }
+.sheet-title { font-weight: 800; font-size: 0.98rem; letter-spacing: 0.02em; }
+.sheet-sub { font-size: 0.8rem; color: var(--on-surface-variant); margin-top: 2px; line-height: 1.4; }
+.sheet .coins-grid, .sheet .asset-list { padding: 0; }
 
 /* ============================================================================
    TOAST
@@ -1380,6 +1466,14 @@ button { font-family: inherit; }
 }
 .dialog-title { font-size: 1.06rem; font-weight: 700; padding: var(--s-lg) var(--s-lg) var(--s-sm); }
 .dialog-body { padding: 0 var(--s-lg) var(--s-md); }
+/* First-MAINNET-charge interstitial body copy */
+.interstitial-copy {
+  margin: 0 0 10px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--on-surface);
+}
 .dialog-actions { display: flex; justify-content: flex-end; gap: var(--s-sm); padding: var(--s-sm) var(--s-md) var(--s-md); }
 .dialog-btn {
   height: 40px;
@@ -1459,20 +1553,413 @@ button { font-family: inherit; }
 .asset-card .ac-sub { font-size: 0.82rem; color: var(--on-surface-variant); margin-top: 2px; font-variant-numeric: tabular-nums; }
 .asset-card > svg { width: 22px; height: 22px; color: var(--on-surface-variant); flex: 0 0 auto; }
 
-.subcart-coin {
-  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
-  border: none; background: transparent; cursor: pointer; padding: 0; color: inherit;
-}
-.subcart-coin .sc-coin-body { flex: 1 1 auto; }
-.subcart-coin .sc-coin-name { font-weight: 700; font-size: 0.98rem; }
-.subcart-coin .sc-coin-sub { display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--on-surface-variant); margin-top: 2px; }
-.subcart-coin .chev { color: var(--on-surface-variant); flex: 0 0 auto; }
-.subcart-coin .chev svg { width: 22px; height: 22px; display: block; }
-
 .donation-link {
   display: block; width: 100%; margin-top: 10px;
   border: none; background: transparent; color: var(--on-surface-variant);
   font-size: 0.8rem; font-weight: 600; cursor: pointer;
   text-decoration: underline; text-underline-offset: 2px;
 }
+
+/* ============================================================================
+   LIVE TRACKER FLIGHT — screens B (awaiting), C (detected→confirming),
+   E (failed/expired). LAYOUT.md anatomy; copy deck strings live in app.js.
+   ========================================================================== */
+
+/* B[2] header — back, state word + rate-lock line, countdown */
+.await-head { display: flex; align-items: center; gap: 8px; padding: 8px 0 8px; }
+.await-head .icon-btn { margin-left: -8px; }
+.await-head .ah-mid { flex: 1 1 auto; min-width: 0; }
+.await-head .ah-title { font-weight: 800; letter-spacing: 0.08em; font-size: 0.82rem; }
+.await-head .ah-sub { font-size: 0.78rem; color: var(--on-surface-variant); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.lock-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: 0.98rem;
+  color: var(--on-surface);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.lock-count.urgent { color: var(--error); } /* final 60 s — pure token reuse */
+
+/* B[3]–[4] QR card — white with quiet zone in BOTH themes; ribbon above the
+   code, corner mode tag below it: nothing ever overlays the code modules. */
+.qr-card {
+  position: relative;
+  width: 262px;
+  max-width: 88%;
+  margin: 10px auto 4px;
+  background: var(--qr-card-bg);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-1);
+}
+.qr-ribbon { text-align: center; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.07em; padding: 5px 8px; }
+.qr-ribbon.testnet { background: var(--qr-testnet-bg); color: var(--qr-testnet-fg); }
+.qr-ribbon.demo { background: var(--qr-demo-bg); color: var(--qr-demo-fg); }
+.qr-code { padding: 10px 14px 0; }
+.qr-code svg { width: 100%; height: auto; display: block; }
+.qr-code img { width: 100%; image-rendering: pixelated; }
+.qr-tagrow { display: flex; justify-content: flex-end; padding: 0 10px 8px; }
+.qr-tag { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.09em; padding: 2px 7px; border-radius: 4px; }
+.qr-tag.testnet { background: var(--qr-testnet-bg); color: var(--qr-testnet-fg); }
+.qr-tag.demo { background: var(--qr-demo-bg); color: var(--qr-demo-fg); }
+.qr-tag.mainnet { background: var(--qr-mainnet-bg); color: var(--qr-mainnet-fg); }
+
+/* B[5] amount — crypto bold, fiat secondary (matches the wallet confirm) */
+.pay-amount { text-align: center; font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 6px; }
+.pay-amount .pa-fiat { font-size: 0.98rem; font-weight: 600; color: var(--on-surface-variant); }
+
+/* B[6]–[7] address chip + verbal verification */
+.addr-line { text-align: center; }
+.addr-line .addr-chip { margin-bottom: var(--s-xs); }
+.chip-copy {
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding: 0 0 0 4px;
+}
+.verbal-hint { text-align: center; font-size: 0.78rem; color: var(--on-surface-variant); line-height: 1.45; padding: 0 8px; }
+
+/* B[8] push-only status — pulse dot on the status-live token */
+.push-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-variant);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+}
+.pulse-dot {
+  width: 10px; height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--status-live-dot);
+  animation: pulse 1.6s infinite;
+  flex: 0 0 auto;
+}
+
+/* B[9] fee attribution */
+.fee-attrib { font-size: 0.78rem; color: var(--on-surface-variant); line-height: 1.45; margin-top: 8px; }
+
+/* B[10] pre-send notice — SOUPS verbatim, warn family in both themes */
+.presend-note {
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--status-demo-bg);
+  border: 1px solid var(--status-demo-border);
+  color: var(--status-demo);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.presend-note b { margin-right: 2px; }
+
+/* B[11] cancel — free until they send; gone after broadcast */
+.cancel-sale {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  height: 48px;
+  border-radius: var(--r-md);
+  border: 1.5px solid color-mix(in srgb, var(--error) 45%, var(--outline));
+  background: transparent;
+  color: var(--error);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.cancel-sale:hover { background: var(--error-container); }
+
+/* C[2] state stepper — persistent across the whole flight */
+.stepper { display: flex; align-items: flex-start; justify-content: center; gap: 8px; padding: 12px 0 10px; }
+.step { text-align: center; color: var(--on-surface-variant); flex: 0 0 auto; }
+.step .st-word { display: block; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.06em; }
+.step .st-sub { display: block; font-size: 0.7rem; font-weight: 700; margin-top: 3px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.step.done { color: var(--status-live); }
+.step.active { color: var(--primary); }
+.step.pending { color: var(--on-surface-variant); } /* SETTLED never pre-reads as money */
+.st-arr { color: var(--outline); font-size: 0.66rem; font-weight: 700; letter-spacing: -1px; margin-top: 2px; flex: 0 0 auto; }
+
+/* C[3][6] definitions + C[4] amount check */
+.flight-note { font-size: 0.8rem; color: var(--on-surface-variant); line-height: 1.5; margin-top: 8px; }
+.amount-check { font-size: 0.8rem; font-weight: 700; line-height: 1.5; margin-top: 8px; font-variant-numeric: tabular-nums; }
+.amount-check.ok { color: var(--status-live); }
+.amount-check.warn { color: var(--status-warn); }
+
+/* C[5] block strip — WHICH block holds the tx, and the blocks on top */
+.block-line { font-size: 0.84rem; font-weight: 700; margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+.block-strip { display: flex; align-items: center; gap: 4px; }
+.blk {
+  flex: 1 1 0;
+  min-width: 0;
+  border: 1.5px solid var(--outline);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: 8px 4px;
+  text-align: center;
+}
+.blk b { display: block; font-size: 0.76rem; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; }
+.blk span { display: block; font-size: 0.64rem; font-weight: 600; color: var(--on-surface-variant); margin-top: 2px; }
+.blk.you { border-color: var(--primary); }
+.blk.mined { border-color: var(--status-live-border); background: var(--status-live-bg); }
+.blk.mined b { color: var(--status-live); }
+.blk.next { border-style: dashed; }
+.blk-arr { color: var(--on-surface-variant); font-size: 0.7rem; flex: 0 0 auto; }
+
+/* C[7] progress + ETA — per-chain confirmation targets */
+.conf-progress { height: 8px; border-radius: 999px; background: var(--surface-variant); overflow: hidden; margin: 14px 0 6px; }
+.conf-progress > i { display: block; height: 100%; background: var(--primary); border-radius: 999px; transition: width 0.3s; }
+.conf-label { display: flex; justify-content: space-between; gap: 8px; font-size: 0.78rem; font-weight: 700; color: var(--on-surface-variant); font-variant-numeric: tabular-nums; }
+
+/* C[8] locked-rate reminder + C[9] post-broadcast no-cancel copy */
+.rate-remind { font-size: 0.8rem; color: var(--on-surface-variant); line-height: 1.5; margin-top: 12px; font-variant-numeric: tabular-nums; }
+.nocancel-note { font-size: 0.8rem; font-weight: 600; color: var(--on-surface-variant); line-height: 1.5; }
+.stop-explain { font-size: 0.76rem; color: var(--on-surface-variant); line-height: 1.5; margin-top: 8px; }
+
+/* E — state word, swap panels, watcher, actions, ledger notes */
+.e-state { display: flex; align-items: center; gap: 8px; font-size: 1.08rem; font-weight: 800; letter-spacing: 0.03em; margin-top: 12px; }
+.e-state.error { color: var(--error); }
+.e-state.warn { color: var(--status-warn); }
+.e-sub { font-size: 0.86rem; color: var(--on-surface-variant); line-height: 1.55; margin: 6px 0 0; }
+.e-panel {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--status-demo-border);
+  background: var(--status-demo-bg);
+  color: var(--status-demo);
+  font-weight: 700;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+}
+.e-watch {
+  margin-top: 2px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-variant);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--on-surface-variant);
+}
+.e-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.e-actions .charge-btn { height: 54px; font-size: 0.92rem; }
+.e-subline { text-align: center; font-size: 0.76rem; color: var(--on-surface-variant); line-height: 1.45; }
+.e-secondary {
+  height: 48px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--outline);
+  background: var(--surface);
+  color: var(--on-surface);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.e-secondary:hover { border-color: var(--primary); }
+.e-ledgernote { font-size: 0.78rem; color: var(--on-surface-variant); line-height: 1.55; }
+
+/* re-charge wears chargeLabel's uppercase verb treatment */
+.charge-btn.caps { text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* sandbox rows that hold a single full-width trigger */
+.sim-row.one { grid-template-columns: 1fr; }
 .donation-link:hover { color: var(--primary); }
+
+/* ============================================================================
+   SCREEN D — SETTLED RECEIPT (thermal paper; stays light in both themes)
+   ========================================================================== */
+/* D[2] — the only state word that ever reads as money (confirmed status) */
+.settled-word {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--status-live);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  font-size: 1.02rem;
+  padding: 6px 2px 12px;
+}
+.receipt.r-doc { position: relative; overflow: hidden; text-align: left; padding: var(--s-lg); }
+.r-doc .r-merchant { text-align: center; font-weight: 800; letter-spacing: 0.04em; font-size: 0.98rem; }
+.r-doc .r-when { text-align: center; color: var(--receipt-muted); font-size: 0.8rem; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.r-doc .r-line { padding: 3px 0; }
+.r-doc .r-line .rv.soft { font-weight: 500; max-width: 210px; line-height: 1.4; }
+.r-doc .r-netline { font-weight: 800; font-size: 0.84rem; letter-spacing: 0.03em; }
+.r-doc .r-settle { font-size: 0.8rem; margin-top: 4px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.r-doc .r-txchip { display: flex; align-items: center; gap: 6px; margin-top: 6px; min-width: 0; }
+.r-doc .r-tx {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  background: color-mix(in srgb, var(--receipt-fg) 6%, var(--receipt-bg));
+  border: 1px solid var(--receipt-dash);
+  border-radius: var(--r-pill);
+  padding: 3px 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.r-doc .r-public { font-size: 0.74rem; color: var(--receipt-muted); margin-top: 6px; line-height: 1.5; }
+/* D[10] income stamp — solid green full booking equation on mainnet only;
+   every other combination wears the hatched NOT-INCOME band */
+.r-stamp { text-align: center; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.06em; padding: 9px 10px; border-radius: var(--r-sm); }
+.r-stamp.income { background: var(--receipt-income-bg); color: var(--receipt-income-fg); }
+.r-stamp.not {
+  color: var(--receipt-hold-fg);
+  border: 1.5px solid color-mix(in srgb, var(--receipt-hold-fg) 45%, var(--receipt-bg));
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--receipt-hold-fg) 13%, var(--receipt-bg)) 0 7px,
+    var(--receipt-bg) 7px 14px
+  );
+}
+.r-doc .r-refund { font-size: 0.76rem; color: var(--receipt-muted); margin-top: 10px; line-height: 1.5; }
+/* D[11] diagonal PRACTICE watermark — every non-mainnet receipt */
+.r-watermark { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.r-watermark span {
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: 0.4em;
+  padding-left: 0.4em; /* optically recenters the tracked-out glyphs */
+  color: var(--receipt-watermark);
+  transform: rotate(-24deg);
+  white-space: nowrap;
+}
+.receipt-actions.three { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ============================================================================
+   SCREEN F — SALE HISTORY (ledger with reconciliation)
+   ========================================================================== */
+.hist-head { display: flex; align-items: center; gap: 8px; padding: 2px var(--s-lg) 10px; }
+.hist-head .hh-title { flex: 1 1 auto; font-size: 1.05rem; font-weight: 800; letter-spacing: 0.02em; }
+.hh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--outline);
+  background: var(--surface);
+  color: var(--on-surface);
+  font-weight: 700;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+.hh-btn svg { width: 16px; height: 16px; }
+.hh-btn:hover { border-color: var(--primary); }
+
+/* F[3]–[4] income card + itemized not-income line */
+.recon-card {
+  margin: 0 var(--s-lg) var(--s-md);
+  border: 1px solid var(--status-live-border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  padding: var(--s-md) var(--s-lg);
+}
+.recon-total { font-size: 1.3rem; font-weight: 800; color: var(--status-live); font-variant-numeric: tabular-nums; }
+.recon-total .recon-kicker { font-size: 0.78rem; letter-spacing: 0.08em; margin-right: 7px; }
+.recon-contract { font-size: 0.72rem; color: var(--on-surface-variant); margin-top: 3px; line-height: 1.5; }
+.recon-notline {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--status-warn);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--outline-soft);
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+}
+
+/* F[5] filter chips — same chronological list under every chip */
+.fchips { display: flex; gap: 8px; padding: 0 var(--s-lg) var(--s-md); flex-wrap: wrap; }
+.fchip {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--outline);
+  background: var(--surface);
+  color: var(--on-surface-variant);
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.fchip.active { border-color: var(--primary); background: var(--primary-container); color: var(--on-primary-container); }
+
+/* F[6]–[13] row anatomy */
+.hrow { border: 1px solid var(--outline); border-radius: var(--r-md); background: var(--surface); padding: 10px 12px; }
+.hrow-l1 { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.hrow-status { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em; }
+.hrow-status.st-settled { color: var(--status-live); }
+.hrow-status.st-review { color: var(--status-warn); }
+.hrow-status.st-expired { color: var(--on-surface-variant); }
+.hrow-status.st-failed { color: var(--error); }
+.hrow-status.st-refund { color: var(--status-refund); }
+.hrow-chain { font-weight: 700; font-size: 0.84rem; }
+.hrow-badge { margin-left: auto; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.05em; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+.hrow-badge.mainnet { background: var(--mode-mainnet-bg); color: var(--mode-mainnet-fg); }
+.hrow-badge.testnet { background: var(--mode-testnet-bg); color: var(--mode-testnet-fg); }
+.hrow-badge.demo { background: var(--mode-demo-bg); color: var(--mode-demo-fg); }
+.hrow-l2 { font-size: 0.78rem; color: var(--on-surface-variant); margin-top: 4px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.hrow-l3 { display: flex; align-items: center; gap: 8px; margin-top: 7px; min-width: 0; }
+.tx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  background: var(--surface-variant);
+  border-radius: var(--r-pill);
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.tx-none { color: var(--on-surface-variant); font-weight: 700; }
+.hrow-amt { margin-left: auto; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 0.9rem; }
+.hrow-amt.income { color: var(--status-live); }   /* + only when mainnet·REAL·settled */
+.hrow-amt.hold { color: var(--status-warn); font-size: 0.76rem; }
+.hrow-amt.nosale { color: var(--on-surface-variant); font-size: 0.76rem; }
+.hrow-amt.refund { color: var(--status-refund); }
+.hrow-act { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.row-btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--outline);
+  background: var(--surface);
+  color: var(--on-surface);
+  font-weight: 700;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+.row-btn.review { border-color: var(--status-demo-border); background: var(--status-demo-bg); color: var(--status-warn); }
+.row-btn:hover { border-color: var(--primary); }
+.hrow-resolved { font-size: 0.72rem; font-weight: 600; color: var(--on-surface-variant); line-height: 1.45; }
+.hist-empty { padding: var(--s-lg); text-align: center; color: var(--on-surface-variant); font-size: 0.84rem; line-height: 1.5; }
+
+/* F[10] review dialog — book at locked rate / today's value / return */
+.review-sum { font-size: 0.84rem; color: var(--on-surface-variant); line-height: 1.5; margin: 0 0 12px; font-variant-numeric: tabular-nums; }
+.review-choice {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1.5px solid var(--outline);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.review-choice:hover { border-color: var(--primary); }
+.review-choice b { display: block; font-size: 0.88rem; }
+.review-choice span { display: block; font-size: 0.76rem; color: var(--on-surface-variant); margin-top: 3px; line-height: 1.45; font-variant-numeric: tabular-nums; }
