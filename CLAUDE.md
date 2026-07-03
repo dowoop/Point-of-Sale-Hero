@@ -17,7 +17,13 @@ All design knowledge lives in `docs/` (open markdown, supersedes the Figma file)
 `LAYOUT.md` (**the layout & copy contract** — its Copy deck strings are verbatim;
 change copy there first, then in the build) · `SCREENS.md` (the build as it stands) ·
 `BEHAVIOR.md` (state machine + invariants) · `DESIGN-SYSTEM.md` (tokens) ·
-`PAGES.md` (one-glance map & defaults).
+`PAGES.md` (one-glance map & defaults) · `TOOLING.md` (verified tooling research
+for the native terminal) · `LOGIC.md` (the premade scaffolding pack — behavior
+contract for any real implementation; evidence-tagged REF/PA/RESEARCH).
+
+The native pre-alpha (`dowoop/crypto-pos-terminal`, cloned as a sibling dir) has
+real, test-covered chain logic but self-reported proofs — treat its knowledge with
+caution; TOOLING.md records what is verified vs pre-alpha-only.
 
 ## Stack & architecture
 

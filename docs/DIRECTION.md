@@ -68,6 +68,20 @@ Everything hard lives below the tab shell and must never fork per persona:
   @1/@137 — now Sepolia @11155111 / Amoy @80002 per the mode captured at charge time).
   Docs rewritten to describe the new build; **copy changes go through LAYOUT.md's
   Copy deck first**.
+- **2026-07-03** — Tooling research for the native terminal (22 claims verified,
+  3 refuted) → [TOOLING.md](TOOLING.md). A follow-up Monero pass (23 confirmed,
+  2 refuted) verified the view-only detection core end-to-end — wallet-rpc
+  view-only wallets, per-sale subaddresses, pool-scan DETECTED, Monerujo/Cake URI
+  prefill. A third pass (22 confirmed, 3 refuted) mined production processors
+  (MoneroPay's 0/1/10-conf ladder + covered/unlocked model, BTCPay's plugin
+  topology, BitcartCC's integrated-address alternative) and characterized the
+  **subaddress-lookahead restore hazard** from source (50×200 rolling window;
+  in-place raise broken in every shipped release; restore-time lookahead is the
+  recovery — Feather wizard). Tari/price-feeds/Kotlin-libs remain open.
+  Full inventory of the `crypto-pos-terminal` pre-alpha (real chain logic, 1,011
+  host tests, but doc-only provenance — knowledge treated with caution). The
+  persona-independent scaffolding distilled into [LOGIC.md](LOGIC.md), evidence-
+  tagged per source, so the native build is assembly, not invention.
 
 ## Notes from the retail exploration (reference only — not a plan)
 
