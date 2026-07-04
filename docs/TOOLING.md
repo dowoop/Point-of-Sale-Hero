@@ -367,6 +367,165 @@ latency; observe `instantlock_internal` → `chainlock` end-to-end through a
 descriptor watch-wallet), the explorer/no-node fallback path, third-party
 wallet parity, then a mainnet self-pay.
 
+### Zcash — settlement + watch-only + payer leg [VERIFIED] (pass 2026-07-04: 28 confirmed, 2 refuted) · bench [OPEN]
+
+The privacy rail the DIRECTION.md priority list named alongside Tari and Dash.
+Zcash is structurally different from every other rail: shielded transactions hide
+the sender, recipient, and amount on-chain. Detection is not "watch an address"
+— it is **trial-decryption of every shielded output against an incoming viewing
+key**, performed locally. The privacy model is the strongest of any rail, but it
+shapes every architectural decision.
+
+- **Shielded detection is local trial-decryption, not address-watching** [VERIFIED,
+  ZIP-307]: lightwalletd streams *compact blocks* (116 bytes per shielded output —
+  cmu, epk, first 52 bytes of ciphertext; the 512-byte memo is stripped for an 80%
+  bandwidth reduction). The client trial-decrypts every output against its
+  incoming viewing key (IVK). The server never learns which outputs match —
+  "payment detection privacy" is the ZIP-307 security goal. This is the polar
+  opposite of Bitcoin/Ethereum address-watching APIs, which leak merchant address
+  activity to the API operator. The gap: the client must process *every* shielded
+  output in every block, not just its own — O(chain) work, not O(own-txs).
+- **The never-hold-a-spend-key rule is satisfiable two ways** [VERIFIED]:
+  - **Full Viewing Key (FVK)** — derived from the spending key; detects incoming
+    AND outgoing (change, spends via nullifier tracking). ZIP-310 [GUARANTEED]: an
+    FVK holder learns a *lower bound* on the balance (exact if the holder followed
+    standard protocol). The IVK (derived from the FVK) detects incoming only;
+    z_getbalance CAUTION in the RPC docs: "If the wallet has only an incoming
+    viewing key for this address, then spends cannot be detected, and so the
+    returned balance may be larger than the actual balance." For POS, IVK-only is
+    the honest choice: the terminal knows what was *received*, never what was
+    spent (it can't accidentally spend — it lacks the key). FVK is overkill for
+    payment detection and leaks more than needed.
+  - **zcashd z_importviewingkey** [VERIFIED, RPC docs]: imports a viewing key into
+    the wallet's key store; z_listunspent with `includeWatchonly=true` surfaces
+    notes detected via the IVK with `spendable: false`. z_getbalance returns the
+    balance (with the IVK-only caveat above). The viewing key + zcashd does the
+    trial-decryption server-side; the terminal polls via RPC. This is the Monero
+    wallet-rpc analogue.
+- **Per-sale attribution is the diversified-address pattern** [VERIFIED, ZIP-316 +
+  ZIP-310 + redshiftzero/electriccoinco]: a Zcash spending key derives a single
+  IVK, but the IVK + a *diversifier* (11-byte d) produces up to 2^88 unlinkable
+  payment addresses that all decrypt with the same key. Every diversifier yields
+  a valid address (Sapling post-Orchard; Orchard eliminated the ~50% invalid
+  rate). Ywallet auto-generates a new diversified address every few seconds
+  "like an authenticator code"; all scan with the same IVK — sync time is
+  unchanged no matter how many you hand out (contrast Monero's per-subaddress
+  scan cost, or Bitcoin's gap-limit hazard). This is *cleaner* than per-sale HD
+  derivation (Bitcoin/Dash) or per-sale subaddresses (Monero): no index
+  reservation, no gap limit, no restore-time lookahead — just mint a diversifier
+  and hand it out. The terminal generates diversified addresses from the
+  merchant's IVK; no spend key, no xpub, no HD derivation.
+- **Unified Addresses (UA) are the wire format** [VERIFIED, ZIP-316]: a UA bundles
+  multiple receivers (Transparent + Sapling + Orchard) behind one Bech32m string.
+  The sender's wallet picks whichever receiver it supports. For POS: the
+  terminal should emit a UA with an Orchard receiver (shielded-only) or
+  Orchard+Sapling+Transparent (max compatibility). ZIP-316's encoding rules are
+  normative; the UA must be valid per the typecode registry. Diversified
+  addresses are shielded-only — they cannot include a transparent receiver.
+- **ZIP-321 is the payment-request URI** [VERIFIED, ZIP-321]: `zcash:<address>
+  ?amount=<decimal ZEC>&memo=<base64url>&message=<text>&label=<text>`. Multi-
+  payment URIs use `address.1=`, `amount.1=` indexed parameters. Amounts are
+  decimal ZEC with up to 8 decimal places. `req-` prefixed unknown params void
+  the URI (same BIP-21 rule as Dash and Bitcoin). Sprout addresses MUST NOT be
+  supported in payment requests (ZIP-211 restricted transfers). The memo field
+  is base64url-encoded and only valid for shielded recipients — a per-sale memo
+  could carry an order id, but the diversified address itself is the binding
+  (like Monero subaddresses or Tari payment_ids).
+- **Payer leg [VERIFIED at source, with caveats]**:
+  - **Ywallet** [VERIFIED, ywallet.app docs]: builds and displays ZIP-321 payment
+    URIs from its Receive screen (address + amount + memo). Calls them
+    "pre-filled payment slips" — its own Receive screen emits the form a POS
+    would produce. Scanner prefills the send screen from a scanned QR. The most
+    mature Zcash wallet for POS-pattern payment URIs.
+  - **Zashi (Android, zodl-inc/zodl-android)** [VERIFIED, GitHub issue #1758]:
+    parses ZIP-321 from QR scans and prefills a payment confirmation screen. BUT
+    does NOT register as a handler for `zcash:` URI scheme links — a security-audit
+    decision forced Zashi to require rescanning the QR inside the app even after
+    clicking a `zcash:` link (the URI-scheme registration feature request is OPEN
+    since Jan 2025). For POS QR scanning this is a non-issue (the terminal emits a
+    QR, the payer scans it), but it means `zcash:` deep links from web pages don't
+    auto-open Zashi. The parity is scan-based, not deeplink-based.
+  - **Nighthawk** [VERIFIED, community forum]: ZIP-321 + deep link integration is
+    listed as High priority WIP in their development grant. Not confirmed shipped.
+  - **Unverified**: official Zcash CLI/GUI, Edge, Exodus, Trust Wallet, Brave
+    Wallet ZIP-321 scan support. iOS payer parity for any wallet.
+- **Confirmation gate** [VERIFIED, zcash glossary + ZIP-203]: no deterministic
+  finality — Zcash is PoW (Equihash) with 75-second target block spacing (post-
+  Blossom). "Some may consider a single confirmation to be secure for low value
+  transactions, although it is generally recommended to wait for 10+
+  confirmations." The 10-conf convention maps cleanly to the LOGIC.md gate shape:
+  `confs >= 10` (protocol lore, not consensus — same pattern as Monero's 10-block
+  unlock). No `locked` boolean equivalent — shielded transactions are either
+  mined (confirmed) or not (in mempool or expired).
+- **Transaction expiry is protocol-level** [VERIFIED, ZIP-203]: `nExpiryHeight`
+  sets a block height after which an unmined tx is removed from all mempools.
+  Default: 40 blocks (~50 min post-Blossom at 75s/block). This is the *built-in*
+  rate-lock window — the terminal's 15-min lock is tighter and must be enforced
+  app-side (show the charge as expired before the network drops it). A tx not
+  mined before its expiry height is invalid and must be re-sent. ZIP-203 says
+  "UIs and services must never rely on zero-confirmation transactions in Zcash."
+- **zcashd is being deprecated — the Z3 transition** [VERIFIED, z.cash/support +
+  GitHub]: zcashd is deprecated in 2025; full nodes migrate to **zebrad** (ZFND
+  Rust consensus node), the wallet to **Zallet** (zcash/zallet, Rust, v0.1.0-
+  alpha.4 as of Jun 25 2026 — actively developed, 736 commits, 27 contributors,
+  *not production-ready*), and the RPC/index layer to **Zaino** (zingolabs/zaino,
+  serves address-index and explorer RPCs on top of zebrad). This "Z3 stack"
+  (zebrad + Zaino + Zallet) is the future. The zcashd RPC spreadsheet
+  (z.cash/support/zcashd-deprecation) tracks which methods survive: `z_listunspent`
+  and shielded wallet RPCs → Zallet; `getaddressbalance`/`getaddresstxids` → Zebra
+  or Zaino. **Implication for the terminal**: building against zcashd RPC today is
+  building against a deprecated stack; building against the Z3 stack is building
+  against alphas. The lightwalletd path (compact-block streaming + local trial-
+  decryption via an SDK) is the stable layer — it already works with both zcashd
+  and zebrad as its backend.
+- **lightwalletd [VERIFIED]** (zcash/lightwalletd, Go, MIT, v0.4.19 Mar 2026, 122
+  stars, actively maintained — last commit Jun 25 2026): the CompactTxStreamer
+  gRPC service. Key RPCs: `GetLatestBlock`, `GetBlock`, `GetBlockRange` (streaming
+  compact blocks), `GetTransaction`, `GetMempoolStream`, `GetAddressUtxosStream`
+  (transparent only). Shielded detection is client-side: the server sends compact
+  blocks, the client trial-decrypts. No `GetAddressBalance` for shielded — that's
+  a local computation after scanning. lightwalletd works with both zcashd and
+  zebrad backends (Zebra docs recommend zcash/lightwalletd for testing).
+- **On-device SDKs [VERIFIED]**:
+  - **zcash-android-wallet-sdk** (cash.z.ecc.android, Maven): the official
+    Android SDK, Kotlin + Rust FFI (librustzcash). Shielded-first; does the full
+    lightwalletd compact-block scan + trial-decryption + spend logic on-device.
+    This is what Zashi is built on. For a POS terminal: use the SDK's scanning
+    with a view-only wallet (IVK imported, no spend key) to detect incoming
+    payments on-device without running a full node or zcashd.
+  - **zcash-swift-payment-uri** (zecdev/zcash-swift-payment-uri): a standalone
+    ZIP-321 parser/builder library — evidence the ecosystem treats ZIP-321 as the
+    standard payment-URI format.
+- **Privacy framing (the honest differentiator)**: Zcash is the *only* priority
+  rail with receiver-side privacy. Monero's sender uses a one-time address, but
+  the transaction is visible to the receiver and anyone with their view key.
+  Dash and Bitcoin have no receiver-side privacy at all. Zcash's shielded pool
+  hides the sender, recipient, and amount from everyone except the holder of the
+  viewing key — the terminal's IVK sees incoming payments and nothing else. The
+  merchant's address, amounts, and transaction history are NOT on a transparent
+  chain. This is the strongest privacy story of any rail and the reason Zcash is
+  on the priority list. The copy must be honest: detection is O(chain) work
+  (every shielded output must be trial-decrypted), and the terminal must
+  continuously scan — it cannot just poll an address API.
+- **The gap-limit analogue**: there is none. Diversified addresses are derived
+  from the IVK, not from an HD seed with a gap limit. A wallet restored from
+  the spending key (or FVK) re-derives the IVK and trial-decrypts the entire
+  chain — every diversified address ever issued is recovered. No index
+  tracking, no lookahead hazard, no restore-time lookahead. This is cleaner
+  than Bitcoin (gap limit ~20), Monero (50×200 rolling window + broken
+  in-place raise), and Tari (payment_id embedded in address).
+
+**Rail verdict**: settlement semantics, view-only detection (IVK trial-
+decryption via lightwalletd), per-sale attribution (diversified addresses), and
+the payer leg (ZIP-321, source-verified in Ywallet + Zashi) are verified. The
+architecture is unique: detection is local computation, not address-watching —
+the privacy-respecting end of the spectrum, at the cost of O(chain) scan work.
+The zcashd deprecation is a timing hazard (Z3 stack is alpha); the lightwalletd
++ SDK path is the stable target. Remaining before mainnet: a testnet bench
+(measure scan latency, verify trial-decryption end-to-end with a view-only
+wallet, observe the 10-conf gate, test the ZIP-321 round-trip with Ywallet/
+Zashi), iOS payer parity, and a mainnet self-pay.
+
 ## Price feeds — [OPEN], with [PRE-ALPHA] design worth keeping
 No provider claims (rate limits, licensing for open source) survived verification —
 that comparison is still to do. The pre-alpha's *architecture* is sound regardless of
@@ -406,11 +565,10 @@ compileSdk 36.1) is unverified as buildable.
 ## Hoped rails (aspirational, unresearched)
 
 All assets the scaffolding can honestly serve are hoped for eventually; the
-privacy rails are queued first per [DIRECTION.md](DIRECTION.md). **Tari** and
-**Dash** have graduated to their own verified sections above; still aspirational:
-**Zcash** (shielded pools; incoming viewing keys should permit Monero-style
-view-only detection via lightwalletd — unverified). Each needs the full
-research→bench treatment before code.
+privacy rails are queued first per [DIRECTION.md](DIRECTION.md). **Tari**,
+**Dash**, and **Zcash** have graduated to their own verified sections above.
+No aspirational privacy rails remain — the priority queue is clear. Each
+non-priority asset needs the full research→bench treatment before code.
 
 ## Open questions (next research)
 1. Monero edges (core + production precedents verified above): URI prefill in
@@ -429,3 +587,10 @@ research→bench treatment before code.
 4. Price feeds: free-tier limits + licensing comparison for an open-source app.
 5. Kotlin library health: bdk-android vs the pre-alpha's hand-rolled REST approach;
    kethereum vs web3j vs hand-rolled; maintained Solana Kotlin SDK; ESC/POS printing.
+6. Zcash: testnet bench (measure compact-block scan latency with a view-only IVK;
+   verify trial-decryption end-to-end through lightwalletd; observe the 10-conf
+   gate; test the ZIP-321 round-trip with Ywallet and Zashi); iOS payer parity
+   (Ywallet iOS, Zashi iOS, Nighthawk iOS — all unverified); zcashd→Z3 migration
+   timing (Zallet alpha status; when does zcashd stop accepting the awareness
+   flag); whether the zcash-android-wallet-sdk supports view-only (IVK-only)
+   scanning without a spend key; Orchard-only UAs vs multi-receiver UAs for POS.

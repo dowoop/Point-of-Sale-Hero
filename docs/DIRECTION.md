@@ -22,9 +22,11 @@ supported eventually** — "hoped" is deliberate: nothing ships without clearing
 bar the Monero rail set (adversarially verified research, then bench work).
 **Privacy-focused rails get priority: Tari, Dash, and Zcash**, alongside the
 already-verified Monero — privacy at the counter is the differentiating promise of
-a self-custodial terminal. Priority orders the research/bench queue; it does not
-exempt a rail from the honesty rules (untracked modes book nothing, mode captured
-at charge time, fail-closed detection).
+a self-custodial terminal. **All three priority privacy rails are now verified at
+the desk level** (Tari, Dash, Zcash — 2026-07-03/04); each awaits testnet bench
+work before mainnet. Priority orders the research/bench queue; it does not exempt a
+rail from the honesty rules (untracked modes book nothing, mode captured at charge
+time, fail-closed detection).
 
 ## What is scaffolding (must stay persona-independent)
 
@@ -118,6 +120,28 @@ Everything hard lives below the tab shell and must never fork per persona:
   CoinJoin is payer-side opt-in, and Kraken refuses mixed-source deposits) —
   its priority slot rests on InstantSend counter-UX, not privacy. Remaining:
   testnet bench, explorer fallback, third-party wallet parity.
+  [TOOLING.md](TOOLING.md).
+- **2026-07-04** — **Zcash rail research** (pass: 28 confirmed, 2 refuted).
+  The last priority privacy rail is now verified. Zcash is structurally unique:
+  detection is **local trial-decryption** of compact blocks (ZIP-307), not
+  address-watching — the server never learns which outputs match (strongest
+  privacy model of any rail). Per-sale attribution is the **diversified-address
+  pattern** (ZIP-316): the IVK + a diversifier produces up to 2⁸⁸ unlinkable
+  addresses that all decrypt with the same key — no HD derivation, no xpub, no
+  gap limit, no index reservation (cleaner than Bitcoin/Dash/Bitcoin HD or
+  Monero subaddresses). Payer leg verified at source: ZIP-321
+  `zcash:<addr>?amount=<ZEC>&memo=<base64url>` round-trips in Ywallet (emits and
+  scans) and Zashi (scans, but URI-scheme deeplinks not auto-opened — security-
+  audit decision; QR scan parity is fine for POS). Gate: `confs >= 10` (protocol
+  lore, same convention as Monero's 10-block unlock). `nExpiryHeight` (ZIP-203)
+  is the built-in rate-lock (40 blocks / ~50 min default). **Timing hazard**:
+  zcashd is deprecated (2025), migrating to the Z3 stack (zebrad + Zaino +
+  Zallet) — Zallet is v0.1.0-alpha.4, not production-ready; the lightwalletd +
+  SDK path (stable, works with both zcashd and zebrad) is the build target.
+  **Honesty note: Zcash is the only priority rail with receiver-side privacy**
+  — the merchant's address, amounts, and history are not on a transparent chain.
+  Remaining: testnet bench (scan latency, trial-decryption e2e, 10-conf gate,
+  ZIP-321 round-trip), iOS payer parity, mainnet self-pay.
   [TOOLING.md](TOOLING.md).
 - **2026-07-03** — **Tari payer leg verified** (wallet source as evidence):
   Aurora Android prefills address+amount from the RFC-0154 deeplink

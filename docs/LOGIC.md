@@ -89,6 +89,20 @@ returning "unknown", never "paid". [PA]
     signals are spork-toggleable — the depth fallback is mandatory. ZMQ lock
     topics (`zmqpubhashtxlock`/`zmqpubhashchainlock`) are latency-only: delivery
     is documented lossy, so poll RPC for truth. [RESEARCH]
+  - Zcash: no `locked` boolean, no deterministic finality — PoW with 75-second
+    target block spacing. Gate: `confs >= 10` (protocol lore, not consensus —
+    same convention as Monero's 10-block unlock; zcash glossary: "generally
+    recommended to wait for 10+ confirmations"). DETECTED is local
+    trial-decryption: the client downloads compact blocks from lightwalletd
+    (116 bytes per shielded output — cmu, epk, first 52 bytes of ciphertext;
+    80% bandwidth reduction vs full) and trial-decrypts every output against its
+    incoming viewing key (IVK). The server never learns which outputs match
+    (ZIP-307 payment-detection privacy). No address-watching API — detection is
+    O(chain) work, not O(own-txs). Transport: lightwalletd gRPC streaming for
+    compact blocks; local scan for truth. `nExpiryHeight` (ZIP-203) is the
+    built-in rate-lock: unmined txs expire after 40 blocks (~50 min) — tighter
+    than the terminal's 15-min lock, which must enforce expiry app-side.
+    [RESEARCH]
 - **Transport discipline**: WS/push for latency, HTTP polling for truth — missed WS
   events are unrecoverable without polling backfill. [RESEARCH]
 
@@ -100,6 +114,7 @@ How a payment is bound to *this* sale, per rail:
 |---|---|---|
 | Bitcoin | **Fresh HD address per sale** from merchant xpub (public derivation only; reject any private key material; durably reserve index before display; fall back to static address on failure) | Gap limit: warn the merchant at ~15 consecutive unpaid codes, or track issued addresses in-app [RESEARCH+PA] |
 | Dash | **Inherits the Bitcoin xpub flow verbatim** — fresh HD address per sale; watch via a Dash Core v21+ descriptor wallet (`createwallet disable_private_keys=true descriptors=true` + `importdescriptors` ranged xpub; descriptors are opt-in, NOT the default) | InstantSend needs nothing per-sale — locks are input-level and automatic; DashJ SPV is the on-device candidate (whether SPV *verifies* islocks or trust-relays them is open) [RESEARCH] |
+| Zcash | **Fresh diversified address per sale** from the merchant's incoming viewing key (IVK) — the IVK + a diversifier (11-byte d) produces up to 2⁸⁸ unlinkable addresses that all decrypt with the same key. No HD derivation, no xpub, no gap limit, no index reservation | Detection is local trial-decryption via lightwalletd compact blocks (not address-watching); IVK-only means the terminal detects incoming but never outgoing — honest for POS (can't accidentally spend, lacks the spend key). zcashd `z_importviewingkey` + `z_listunspent includeWatchonly=true` is the RPC path; on-device via zcash-android-wallet-sdk (Kotlin + Rust FFI). No gap-limit analogue — wallet restored from spending key re-derives IVK and recovers all diversified addresses [RESEARCH] |
 | Solana | Static address + **fresh 32-byte reference key** as read-only non-signer account | Spec'd Solana Pay pattern; for SPL watch the derived ATA [RESEARCH] |
 | Monero | **Fresh subaddress per sale** via view-only wallet (`generate_from_keys` view-key-only + `create_address` — both verified watch-only-safe in source; production precedent: MoneroPay) | Merchant runs own **unrestricted** wallet-rpc (or on-device wallet2); address-only config = UNTRACKED: show code, book nothing. **Lookahead duty** (Monero's gap limit): wallet2 restores scan only a rolling 50×200 window, and the in-place raise is broken in every shipped release ≤ v0.18.5.0 — create the POS wallet with raised lookahead, count minted subaddresses, and surface seed-restore instructions (restore-time lookahead; Feather ≥2.3.0 wizard) [RESEARCH+PA] |
 | Tari L1 | Per-sale `payment_id` **embedded in the TariAddress itself** (RFC-0155: dual-key address + ≤256 B encrypted payment id that lands on the UTXO) | Detect via the **read-only console wallet** (view key + public spend key — never the spend wallet) over gRPC; payer-wallet QR support for embedded payment ids unverified [RESEARCH+PA] |
@@ -154,7 +169,12 @@ BIP-21/321 `bitcoin:` (decimal BTC, period, no commas) · Dash:
 Dash Wallet Android (its scanner prefills address+amount; its Receive screen emits
 the same form). **Never add an InstantSend param**: `IS=1` is ignored and
 `req-IS=1` voids the whole URI in both dashcore-lib and dashj (BIP-21 unknown
-`req-*` rejection); locking is automatic network-side · ERC-681 `ethereum:`
+`req-*` rejection); locking is automatic network-side · ZIP-321 `zcash:`
+(`zcash:<addr>?amount=<decimal ZEC>&memo=<base64url>&message=<text>&label=<text>`;
+amounts decimal ZEC up to 8 places; `req-` unknown params void the URI; Sprout
+addresses MUST NOT be supported; memo is base64url and shielded-only; the
+diversified address itself is the per-sale binding — no separate payment_id
+param; source-verified round-trip in Ywallet Receive + Zashi scan) · ERC-681 `ethereum:`
 (`@chainId`; ERC-20 as `/transfer?address=&uint256=` in atomic units) · Solana Pay
 `solana:` (`amount`, `spl-token`, `reference`) · `monero:<addr>?tx_amount=` —
 **opaque form only** (`monero://` with slashes is rejected by Monerujo) and strictly
