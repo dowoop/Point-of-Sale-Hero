@@ -184,7 +184,7 @@ verified end-to-end on primary sources:
 What remains for the rail: a mainnet self-pay (real funds — the operator's step),
 and the pool-latency measurement against a local node.
 
-### Tari (Minotari L1 / Ootle L2) — core [VERIFIED] (pass 2026-07-03: 22 confirmed, 3 refuted) · payer leg [OPEN]
+### Tari (Minotari L1 / Ootle L2) — core [VERIFIED] (pass 2026-07-03: 22 confirmed, 3 refuted) · payer leg [VERIFIED]
 The make-or-break question resolved in the terminal's favor:
 - **The never-hold-a-spend-key rule is satisfiable.** `minotari_console_wallet`
   has a documented **read-only boot mode** (private view key + public spend key;
@@ -260,6 +260,113 @@ payer-side single-scan prefill. Remaining before mainnet: an esmeralda bench
 then a mainnet self-pay. The reference build now emits the RFC-0154 deeplink
 for Minotari (network authority per charge-time mode).
 
+### Dash — settlement + watch-only + payer leg [VERIFIED] (two passes 2026-07-03: 24+25 confirmed, 1 refuted) · explorers/bench [OPEN]
+
+A Bitcoin fork, so the xpub watch-only flow and BIP-21 URI shape carry over from
+the Bitcoin rail; only the Dash-specific deltas were researched. Its POS story is
+**InstantSend**, and it holds up — with mandatory caveats:
+
+- **InstantSend is automatic** on every eligible transaction since v0.14.0
+  (DIP0010, 2019): masternode LLMQ quorums attempt to lock every tx's *inputs* —
+  no special send type, no extra fee, no payer action (the `sendrawtransaction`
+  IS flag has been deprecated-and-ignored since 0.15.0). DIP22 made locks
+  deterministic (`isdlock`, protocol 70220; legacy `islock` removed at 70231).
+  Official latency figure: **~3 s** (vendor docs, unmeasured — bench item).
+- **The composite-field trap** (gate-logic hazard): the RPC `instantlock` field
+  is a backwards-compat COMPOSITE — true if islocked **or** in a ChainLocked
+  block. `instantlock_internal` is the pure islock; per-tx `chainlock` is
+  separate. Source: `pushKV("instantlock", fLocked || chainlock)`. Two wire
+  gotchas: mempool RPCs return `instantlock` as the *string*
+  `"true"/"false"/"unknown"`, not a JSON bool; and the JSON key is
+  `instantlock_internal` with an underscore — the docs' hyphenated
+  `instantlock-internal` is a help-text typo carried into the source's own
+  RPCResult metadata.
+- **Not every payment gets an islock — the depth fallback is mandatory, not
+  optional.** Eligibility requires *each input* to be islocked, in a ChainLocked
+  block, or ≥ 6 confs on mainnet (2 testnet; 100 for coinbase). A payer spending
+  fresh unconfirmed non-locked change gets no lock at broadcast (retroactive
+  signing may grant one later). And both signals are **spork-toggleable**
+  (SPORK_19 for ChainLocks is still in master) — when neither exists the gate
+  must degrade to pure depth counting, fail-closed.
+- **ChainLocks make blocks reorg-final when present**: an LLMQ_400_60 quorum
+  (≥ 240 of 400 masternodes) signs the *first-seen* block; a valid `clsig`
+  obliges every node to reject competing blocks at that height. They can fail
+  to FORM (DIP-0008: fall back to first-seen/longest-chain), so check per block:
+  `getblock.chainlock` (bool), `gettxchainlocks` (≤ 100 txids),
+  `getbestchainlock` (throws if none known; **can return a stale lock when
+  signing stalls — compare its height to the tip**). Refuted 0-3: "a block is
+  only chainlocked after all its txs are islocked" — no such coupling; do not
+  design around it.
+- **The recommended gate** (same shape as the other rails): DETECTED on mempool
+  sight → show **“locked”** on `instantlock_internal == true` (seconds, via
+  `getrawtransaction`/`getmempoolentry` or ZMQ `zmqpubhashtxlock`) → **book
+  income only when the containing block has `chainlock == true` OR
+  confs ≥ 6** — 6 is Dash's own input-eligibility depth; Kraken's production
+  floor is 2 plain confs. Never book on an islock alone pre-block.
+- **Production reality check**: the one verified acceptor policy (Kraken,
+   2026-05) gates on **2 block confirmations** and mentions InstantSend nowhere
+  on its deposit page — no verified production acceptor books on islock alone.
+  Dash's own integration guide calls islocked funds "immediately and securely
+  re-spendable" but documents zero failure modes on that page — vendor
+  guidance, not adversarial analysis.
+- **Watch-only merchant side [VERIFIED]**: Dash Core is not 0.17-era — full
+  descriptor-wallet machinery shipped in v21.0.0 and is in current v23.1.7
+  (2026-07-01, active cadence): `importdescriptors` with ranged xpubs,
+  `listdescriptors`, `createwallet` with `disable_private_keys` + `descriptors`
+  in one call. Version-gated: `descriptors` defaults **false** (legacy is still
+  the default wallet type, unlike Bitcoin Core ≥ 23), explicit
+  `load_on_startup` required, labeled experimental at v21; legacy
+  `importaddress`/`importmulti` are disabled on descriptor wallets.
+  Pruned + watch-only + ZMQ simultaneity and mainnet disk footprint: [OPEN].
+- **ZMQ has dedicated topics for both locks** (`zmqpubhashtxlock`/`rawtxlock`/
+  `rawtxlocksig`, `zmqpubhashchainlock`/`rawchainlock`/`rawchainlocksig`, plus
+  `instantsenddoublespend`), but delivery is **documented lossy** (detect-only
+  sequence numbers, no replay) — ZMQ is the latency layer, RPC polling stays
+  the truth layer, exactly the house transport rule. `instantsendnotify` is
+  wallet-scoped (fires only for wallet-known — e.g. imported watch-only —
+  addresses). Lock-topic payload format is undocumented in zmq.md — confirm
+  from source before coding.
+- **DashJ SPV** (`org.dashj:dashj-core`): the live library inside the official
+  Android wallet, actively maintained (22.0.3, 2026-06; six releases in 2026;
+  bitcoinj 0.15.10 base; effectively single-maintainer — bus-factor risk).
+  InstantSendManager is under active development; whether bloom-filter SPV
+  **verifies** isdlocks/chainlocks or trust-relays them: [OPEN] — determines
+  whether an on-device merchant watcher can show "locked" honestly without a
+  node.
+- **Payer leg [VERIFIED]** (source-level round trip): canonical URI is plain
+  BIP-21 — `dash:<address>?amount=<decimal DASH>` (+ optional label/message).
+  Dash Wallet Android (DashPay 11.8.1, 2026-06; actively maintained) scans it
+  through dashj `BitcoinURI` into a PaymentIntent that prefills **address and
+  amount**, and its own Receive screen emits exactly this form. **Never emit
+  any InstantSend URI parameter**: `IS=1` is silently ignored, and `req-IS=1`
+  makes both dashcore-lib and dashj **reject the whole URI** (BIP-21 unknown
+  `req-*` rule); the historical IS param lived only in the proprietary
+  `dashwallet:` inter-app scheme and was closed as obsolete in 2020 when
+  locking became automatic. Unverified: iOS wallet + both store listings,
+  third-party wallets (Edge/Exodus/Coinomi/Trust/Dash Core desktop).
+- **Privacy framing (be honest in copy)**: Dash has **no receiver-side
+  privacy** — the merchant's address, amounts, and history are fully public
+  (transparent chain; contrast Monero). CoinJoin (renamed from PrivateSend at
+  v0.17) is payer-side, opt-in mixing of the payer's own inputs. And Kraken
+  refuses deposits "sent via… PrivateSend on Dash, CoinJoin, or other
+  obfuscation tools" — mixed-source Dash is treated as toxic by at least one
+  major acceptor, which can complicate the merchant's own cash-out. Dash earns
+  its priority slot on InstantSend counter-UX, not on privacy — the weakest
+  privacy story of the three priority rails.
+- **Bench viability, payer half [VERIFIED]**: official testnet APKs of Dash
+  Wallet ship as release assets (`wallet-_testNet3-release.apk` on v11.8.1;
+  DashPay/platform disabled — core payments only, which is all a bench needs).
+  Node half [OPEN]: testnet LLMQ islock/chainlock formation reliability,
+  faucet aliveness, testnet dashd footprint.
+
+**Rail verdict**: settlement semantics, watch-only tooling, and the payer leg
+all verified at source level in one day — the cleanest desk position of any
+rail so far (it inherits Bitcoin's shape and adds observable fast-lock
+signals). Remaining before mainnet: a testnet bench (measure real islock
+latency; observe `instantlock_internal` → `chainlock` end-to-end through a
+descriptor watch-wallet), the explorer/no-node fallback path, third-party
+wallet parity, then a mainnet self-pay.
+
 ## Price feeds — [OPEN], with [PRE-ALPHA] design worth keeping
 No provider claims (rate limits, licensing for open source) survived verification —
 that comparison is still to do. The pre-alpha's *architecture* is sound regardless of
@@ -299,18 +406,26 @@ compileSdk 36.1) is unverified as buildable.
 ## Hoped rails (aspirational, unresearched)
 
 All assets the scaffolding can honestly serve are hoped for eventually; the
-privacy rails are queued first per [DIRECTION.md](DIRECTION.md): **Tari** (next —
-pre-alpha code exists, see above), **Dash** (note: its POS-relevant feature is
-InstantSend's fast finality; PrivateSend privacy is optional CoinJoin, not
-default), **Zcash** (shielded pools; incoming viewing keys should permit
-Monero-style view-only detection via lightwalletd — unverified). Each needs the
-full research→bench treatment before code.
+privacy rails are queued first per [DIRECTION.md](DIRECTION.md). **Tari** and
+**Dash** have graduated to their own verified sections above; still aspirational:
+**Zcash** (shielded pools; incoming viewing keys should permit Monero-style
+view-only detection via lightwalletd — unverified). Each needs the full
+research→bench treatment before code.
 
 ## Open questions (next research)
 1. Monero edges (core + production precedents verified above): URI prefill in
    GUI/CLI/Edge/Stack/Trust; monero-ts/monero-java/monero-lws state; first release
    shipping PR #9953; node topology practice; on-device scan latency/battery.
-2. Tari: any real L1 view-key / L2 indexer tooling, or testnet-only until mature.
-3. Price feeds: free-tier limits + licensing comparison for an open-source app.
-4. Kotlin library health: bdk-android vs the pre-alpha's hand-rolled REST approach;
+2. Tari: the esmeralda bench; Aurora Android's acceptance of the long
+   payment-id-bearing address in the Send deeplink; Tari Universe desktop as payer.
+3. Dash: testnet bench (do testnet LLMQs reliably form islocks/chainlocks; faucet
+   aliveness; testnet dashd footprint; measured islock latency vs the ~3 s claim);
+   DashJ SPV — verify-vs-trust-relay for isdlocks/chainlocks; public explorer
+   fallback (Blockbook instances + instantlock/chainlock field exposure,
+   insight.dash.org aliveness, CryptoID); third-party payer wallets
+   (Edge/Exodus/Coinomi/Trust/Dash Core desktop) + iOS wallet/store state;
+   pruned+watch-only+ZMQ simultaneity; BIP-44 coin type 5′ / legacy drk prefixes
+   (assumed standard, not re-verified).
+4. Price feeds: free-tier limits + licensing comparison for an open-source app.
+5. Kotlin library health: bdk-android vs the pre-alpha's hand-rolled REST approach;
    kethereum vs web3j vs hand-rolled; maintained Solana Kotlin SDK; ESC/POS printing.

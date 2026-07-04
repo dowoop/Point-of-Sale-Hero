@@ -80,6 +80,15 @@ returning "unknown", never "paid". [PA]
     confirmed-but-time-locked books is a deliberate policy call (spendability
     gating says defer, matching the Monero `locked` rule); server-side
     payment_id filtering is unreleased → filter client-side. [RESEARCH+PA]
+  - Dash: two-tier — show "locked" on `instantlock_internal == true` (the pure
+    islock, ~3 s; the plain `instantlock` field is a COMPOSITE islock-OR-chainlock,
+    and mempool RPCs return it as the string `"true"/"false"/"unknown"`); BOOK
+    only when the containing block's `chainlock == true` OR confs ≥ 6 (Dash's own
+    input-eligibility depth; Kraken's production floor is 2). Not every tx gets an
+    islock (inputs must each be locked, chainlocked, or 6-conf deep) and both
+    signals are spork-toggleable — the depth fallback is mandatory. ZMQ lock
+    topics (`zmqpubhashtxlock`/`zmqpubhashchainlock`) are latency-only: delivery
+    is documented lossy, so poll RPC for truth. [RESEARCH]
 - **Transport discipline**: WS/push for latency, HTTP polling for truth — missed WS
   events are unrecoverable without polling backfill. [RESEARCH]
 
@@ -90,6 +99,7 @@ How a payment is bound to *this* sale, per rail:
 | Rail | Mechanism | Notes |
 |---|---|---|
 | Bitcoin | **Fresh HD address per sale** from merchant xpub (public derivation only; reject any private key material; durably reserve index before display; fall back to static address on failure) | Gap limit: warn the merchant at ~15 consecutive unpaid codes, or track issued addresses in-app [RESEARCH+PA] |
+| Dash | **Inherits the Bitcoin xpub flow verbatim** — fresh HD address per sale; watch via a Dash Core v21+ descriptor wallet (`createwallet disable_private_keys=true descriptors=true` + `importdescriptors` ranged xpub; descriptors are opt-in, NOT the default) | InstantSend needs nothing per-sale — locks are input-level and automatic; DashJ SPV is the on-device candidate (whether SPV *verifies* islocks or trust-relays them is open) [RESEARCH] |
 | Solana | Static address + **fresh 32-byte reference key** as read-only non-signer account | Spec'd Solana Pay pattern; for SPL watch the derived ATA [RESEARCH] |
 | Monero | **Fresh subaddress per sale** via view-only wallet (`generate_from_keys` view-key-only + `create_address` — both verified watch-only-safe in source; production precedent: MoneroPay) | Merchant runs own **unrestricted** wallet-rpc (or on-device wallet2); address-only config = UNTRACKED: show code, book nothing. **Lookahead duty** (Monero's gap limit): wallet2 restores scan only a rolling 50×200 window, and the in-place raise is broken in every shipped release ≤ v0.18.5.0 — create the POS wallet with raised lookahead, count minted subaddresses, and surface seed-restore instructions (restore-time lookahead; Feather ≥2.3.0 wizard) [RESEARCH+PA] |
 | Tari L1 | Per-sale `payment_id` **embedded in the TariAddress itself** (RFC-0155: dual-key address + ≤256 B encrypted payment id that lands on the UTXO) | Detect via the **read-only console wallet** (view key + public spend key — never the spend wallet) over gRPC; payer-wallet QR support for embedded payment ids unverified [RESEARCH+PA] |
@@ -139,7 +149,12 @@ How a payment is bound to *this* sale, per rail:
 
 ## 7 · URI/QR builders (amount parity is an invariant)
 
-BIP-21/321 `bitcoin:` (decimal BTC, period, no commas) · ERC-681 `ethereum:`
+BIP-21/321 `bitcoin:` (decimal BTC, period, no commas) · Dash:
+`dash:<addr>?amount=<decimal DASH>` — plain BIP-21, source-verified round-trip in
+Dash Wallet Android (its scanner prefills address+amount; its Receive screen emits
+the same form). **Never add an InstantSend param**: `IS=1` is ignored and
+`req-IS=1` voids the whole URI in both dashcore-lib and dashj (BIP-21 unknown
+`req-*` rejection); locking is automatic network-side · ERC-681 `ethereum:`
 (`@chainId`; ERC-20 as `/transfer?address=&uint256=` in atomic units) · Solana Pay
 `solana:` (`amount`, `spl-token`, `reference`) · `monero:<addr>?tx_amount=` —
 **opaque form only** (`monero://` with slashes is rejected by Monerujo) and strictly

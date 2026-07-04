@@ -104,6 +104,21 @@ Everything hard lives below the tab shell and must never fork per persona:
   pre-alpha's confirmation gate needs a LOCKED-status policy decision, and
   Ootle stays NOT-READY. Payer leg (tari:// URI, Aurora/Universe prefill)
   unverified — Tari ships testnet-only until it is. [TOOLING.md](TOOLING.md).
+- **2026-07-03** — **Dash rail research** (two passes: 24 + 25 claims confirmed,
+  1 refuted): InstantSend is automatic since v0.14.0 and observable
+  (`instantlock_internal`; the composite `instantlock` field trap is documented),
+  but not universal — input-eligibility rules and spork toggles make a ≥6-conf
+  depth fallback mandatory. ChainLocks make blocks reorg-final when present
+  (verify per block, fail-closed). Gate: show "locked" on the islock (~3 s),
+  book only on a chainlocked block or ≥6 confs — no verified production acceptor
+  books on islock alone (Kraken: 2 plain confs). Payer leg verified at source:
+  plain BIP-21 `dash:` URI round-trips through Dash Wallet Android; never emit
+  `req-IS` (voids the URI). Watch-only via Dash Core v21+ descriptor wallets.
+  **Honesty note: Dash has no receiver-side privacy** (transparent chain;
+  CoinJoin is payer-side opt-in, and Kraken refuses mixed-source deposits) —
+  its priority slot rests on InstantSend counter-UX, not privacy. Remaining:
+  testnet bench, explorer fallback, third-party wallet parity.
+  [TOOLING.md](TOOLING.md).
 - **2026-07-03** — **Tari payer leg verified** (wallet source as evidence):
   Aurora Android prefills address+amount from the RFC-0154 deeplink
   (`tari://<network>/transactions/send?tariAddress=&amount=<µT>`); the wallet
