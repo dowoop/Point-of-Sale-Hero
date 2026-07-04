@@ -328,8 +328,9 @@
       return `tari://${net}/transactions/send?tariAddress=${a}&amount=${Math.round(amt * 1e6)}`;
     }
     // Tari Ootle (XTR): no payment-URI standard exists yet (L2 NOT-READY) —
-    // provisional form until one does.
-    return `tari:${a}?amount=${amt.toFixed(2)}`;
+    // provisional form until one does. The sample address may already include
+    // a scheme prefix (tari://…); don't double-scheme it.
+    return a.includes(":") ? `${a}?amount=${amt.toFixed(2)}` : `tari:${a}?amount=${amt.toFixed(2)}`;
   }
   function qrMarkup(text) {
     try {
