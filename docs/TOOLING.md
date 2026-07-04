@@ -227,17 +227,38 @@ The make-or-break question resolved in the terminal's favor:
 - Mainnet context: the live network is Minotari L1 (XTM), launched 2025-05-06
   (secondary sources); block time/emission specifics did not survive
   verification.
-- Still [OPEN] — **the payer-parity leg produced zero surviving claims**:
-  the `tari://` URI/QR format, whether Aurora/Universe prefill
-  address+amount+payment_id from a scan, their 2026 maintenance state; plus
-  `minotari_wallet_ffi` Android health and ViewWallet exposure, the view-only
-  wallet's status-ladder equivalence for incoming one-sided payments, and the
-  mainnet default confirmation count.
+- **Payer leg [VERIFIED]** (dedicated pass 2026-07-03, wallet source as evidence):
+  - **Single-scan parity works on Android.** Aurora (actively maintained; Play
+    listing now branded "Tari Universe Wallet") parses
+    `tari://<network>/transactions/send?tariAddress=<base58>&amount=<µT>&note=<text>`
+    and prefills BOTH address and amount — traced end-to-end from
+    QrScannerViewModel through DeeplinkParser to SendViewModel. Codified in
+    **RFC-0154 (stable)** — but build from its **normative table, never its
+    worked example**, which contradicts the spec it sits in (wrong command,
+    wrong param name, decimal amount).
+  - **The wallet ENFORCES the URI's network authority** (parse returns null on
+    mismatch with the wallet's configured network) — payer-side mode safety
+    stronger than ERC-681, where wallets ignore `@chain_id`.
+  - **A bare-address QR is a broken payment UX**: it parses as a profile/contact
+    deeplink — add-contact dialog, no amount, no send screen. The terminal must
+    emit the full send deeplink; amount is **integer MicroTari** (1 XTM = 10⁶ µT).
+  - **No payment_id URI parameter exists** — per-sale attribution rides inside
+    the RFC-0155 address in the `tariAddress` param, and the shipped wallet
+    library (tag v5.4.0, 2026-07-02) auto-propagates an address-embedded
+    payment_id into the sent UTXO with zero payer action.
+  - iOS: dual-key + PaymentID support shipped Sep 2024 and its Receive screen
+    emits the send-deeplink form; scan-to-prefill on iOS is plausible but
+    formally unconfirmed (claims refuted on citation grounds).
+  - Residual edges: Aurora Android's app-layer acceptance of the longer
+    payment-id-bearing dual address in the Send deeplink (strong source hints,
+    unconfirmed end-to-end); Tari Universe desktop as a payer; QR density with
+    embedded ids — **use short sale ids (8–16 B), not the 256 B max**.
 
-**Rail verdict**: merchant-side detection is now as strong on paper as Monero's
-was pre-bench. Next steps: verify the payer leg (Aurora/Universe QR behavior),
-then bench — read-only console wallet on esmeralda, then a mainnet self-pay.
-Until the payer leg verifies, Tari ships testnet-only.
+**Rail verdict**: both legs now verified — merchant-side view-only detection and
+payer-side single-scan prefill. Remaining before mainnet: an esmeralda bench
+(read-only console wallet + Aurora as payer), the Android long-address edge,
+then a mainnet self-pay. The reference build now emits the RFC-0154 deeplink
+for Minotari (network authority per charge-time mode).
 
 ## Price feeds — [OPEN], with [PRE-ALPHA] design worth keeping
 No provider claims (rate limits, licensing for open source) survived verification —

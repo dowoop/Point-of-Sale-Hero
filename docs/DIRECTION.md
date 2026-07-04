@@ -104,6 +104,14 @@ Everything hard lives below the tab shell and must never fork per persona:
   pre-alpha's confirmation gate needs a LOCKED-status policy decision, and
   Ootle stays NOT-READY. Payer leg (tari:// URI, Aurora/Universe prefill)
   unverified — Tari ships testnet-only until it is. [TOOLING.md](TOOLING.md).
+- **2026-07-03** — **Tari payer leg verified** (wallet source as evidence):
+  Aurora Android prefills address+amount from the RFC-0154 deeplink
+  (`tari://<network>/transactions/send?tariAddress=&amount=<µT>`); the wallet
+  ENFORCES the URI's network authority (payer-side mode safety stronger than
+  ERC-681); bare-address QRs degrade to add-contact — never emit them; per-sale
+  ids ride inside the RFC-0155 address (keep 8–16 B). The reference build's
+  Minotari URI was corrected to the RFC-0154 form. Rail status: both legs
+  verified; esmeralda bench + mainnet self-pay remain before mainnet.
   Full inventory of the `crypto-pos-terminal` pre-alpha (real chain logic, 1,011
   host tests, but doc-only provenance — knowledge treated with caution). The
   persona-independent scaffolding distilled into [LOGIC.md](LOGIC.md), evidence-

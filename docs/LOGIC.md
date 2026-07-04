@@ -130,8 +130,10 @@ How a payment is bound to *this* sale, per rail:
 - MAINNET entry: typed `MAINNET` gate only; the mode pill is preview-only. First
   mainnet charge per session shows the irreversibility interstitial. [REF]
 - QR encodes the mode's network: chain-id per mode (`@1/@137` vs `@11155111/@80002`),
-  testnet address formats, `SIM-` markers in demo; demo codes are non-payable and
-  marked. Untracked/donation codes book nothing. [REF+PA]
+  testnet address formats, Tari network authority (`tari://mainnet/` vs
+  `tari://esmeralda/` — uniquely, the payer wallet ENFORCES this, unlike EVM
+  wallets which ignore chain_id), `SIM-` markers in demo; demo codes are
+  non-payable and marked. Untracked/donation codes book nothing. [REF+PA]
 - Mainnet safety gates before charge: rail configured ∧ rate live ∧ (typed gate
   passed) — each blocks with a reason, never silently. [PA]
 
@@ -142,8 +144,13 @@ BIP-21/321 `bitcoin:` (decimal BTC, period, no commas) · ERC-681 `ethereum:`
 `solana:` (`amount`, `spl-token`, `reference`) · `monero:<addr>?tx_amount=` —
 **opaque form only** (`monero://` with slashes is rejected by Monerujo) and strictly
 numeric amount (a bad value voids the whole URI; verified prefill in Monerujo +
-Cake) · `tari:?amount=`. The amount encoded, displayed, watched, and persisted must
-be the same value — build all four from one source. [REF+PA+RESEARCH]
+Cake) · Minotari: **RFC-0154 deeplink only** —
+`tari://<network>/transactions/send?tariAddress=<base58>&amount=<µT integer>`
+(bare addresses degrade to add-contact; the wallet enforces the network
+authority — build from the RFC's normative table, its worked example is wrong;
+per-sale id rides inside the RFC-0155 address, keep it 8–16 B). The amount
+encoded, displayed, watched, and persisted must be the same value — build all
+from one source. [REF+PA+RESEARCH]
 
 ## 8 · Fail-closed conventions (the house style)
 

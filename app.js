@@ -297,7 +297,10 @@
     if (p.donation) return ch === "Bitcoin" ? "bitcoin:" + a : ch === "Solana" ? "solana:" + a
       // EVM donation codes carry the mode's chain id too — a bare ethereum: URI
       // reads as mainnet, which would contradict a testnet-mode QR.
-      : (ch === "Ethereum" || ch === "Polygon") ? `ethereum:${a}@${(CHAIN_IDS[mode === "testnet" ? "testnet" : "mainnet"])[ch]}` : a;
+      : (ch === "Ethereum" || ch === "Polygon") ? `ethereum:${a}@${(CHAIN_IDS[mode === "testnet" ? "testnet" : "mainnet"])[ch]}`
+      // Minotari: an amount-less RFC-0154 send deeplink — a bare-address QR
+      // degrades to Aurora's add-contact dialog, never the send screen.
+      : ch === "Minotari" ? `tari://${mode === "mainnet" ? "mainnet" : "esmeralda"}/transactions/send?tariAddress=${a}` : a;
     if (ch === "Bitcoin") return `bitcoin:${a}?amount=${amt.toFixed(8)}`;
     if (ch === "Solana") return tok === "USDC"
       ? `solana:${a}?amount=${amt.toFixed(6)}&spl-token=${mode === "testnet" ? USDC_TEST.sol : USDC.sol}`
@@ -315,6 +318,17 @@
       return `ethereum:${a}@${id}?value=${Math.round(amt * 1e6)}000000000000`;
     }
     if (ch === "Monero") return `monero:${a}?tx_amount=${amt.toFixed(6)}`;
+    if (ch === "Minotari") {
+      // RFC-0154 deeplink — the only form Aurora's scanner accepts (anything
+      // else scan-errors; a bare address degrades to add-contact with no
+      // amount). The payer wallet ENFORCES the network authority, so it must
+      // match the charge-time mode; amount is integer MicroTari (1 XTM = 1e6 µT).
+      // Built from RFC-0154's normative table — its worked example is wrong.
+      const net = mode === "mainnet" ? "mainnet" : "esmeralda";
+      return `tari://${net}/transactions/send?tariAddress=${a}&amount=${Math.round(amt * 1e6)}`;
+    }
+    // Tari Ootle (XTR): no payment-URI standard exists yet (L2 NOT-READY) —
+    // provisional form until one does.
     return `tari:${a}?amount=${amt.toFixed(2)}`;
   }
   function qrMarkup(text) {
